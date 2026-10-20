@@ -165,10 +165,18 @@ h1 { font-size: clamp(1.8rem, 3.5vw, 2.6rem); margin: 0.2em 0 0.4em; }
 /* Auth forms */
 .auth { max-width: 460px; }
 .auth-form { display: flex; flex-direction: column; gap: 1rem; background: #fff; padding: 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow); }
-.auth-form label { display: flex; flex-direction: column; gap: 0.3rem; font-weight: 500; font-size: 0.92rem; flex: 1; }
-.auth-form input { padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.auth-form label { display: flex; flex-direction: column; gap: 0.3rem; font-weight: 500; font-size: 0.92rem; flex: 1; min-width: 0; }
+.auth-form input:not([type=checkbox]) { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
 .auth-form .row { display: flex; gap: 1rem; }
 .auth-form p { margin: 0; }
+.auth-form .checkbox { flex-direction: row; align-items: center; gap: 0.5rem; font-weight: 400; }
+.rules { list-style: none; padding: 0; margin: -0.5rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.rules li.ok { color: var(--green); }
+.match { font-size: 0.85rem; margin-top: -0.5rem !important; }
+.match.ok { color: var(--green); }
+.greeting { color: #fff; font-weight: 500; }
+.btn-nav { background: #fff; color: var(--yale-blue); }
+.btn-nav:hover { background: #e6eef8; }
 
 /* Floating chat */
 .chat { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; gap: 0.75rem; }

@@ -85,3 +85,33 @@ Template for each problem (copy for each new problem):
 **Third follow-up prompt:**
 
 > Wow I love it! Move ahead with the text!
+
+## Problem 4 — Create account and login
+
+**Prompt (my own words):**
+
+> Build a normal create-account / login flow.
+>
+> Create account: first name, last name, email, password (confirm password is a nice touch - they can write it again and make sure the passwords align, and also, that the password meets certain complexity best practices you recommend)
+>
+> Log in: email and password
+>
+> new accounts go into the users table. make sure to store passwords super securely so hackers, human or AI, cannot access them. tell me best practices for doing so and what you reocmmend and why.
+>
+> seed database already has test user you can use while building, see image.
+>
+> how login checks password:
+> never un-hash the stored value. re-hash what user typed and comprae.
+>
+> read the salt out of stored string (middle piece) - do not make a new one at login.
+> hash typed password with same salt, then compare to stored hash. use constant-time compare.
+>
+> signup and login must use same hash settings (same funciton, salt handling, iteraciton count) - if differ even right password will not match.
+>
+> surest check: log in as the seeded test user adn as a brand new acconut you just created in your own app.
+>
+> confirm you can log in as that user and that branmd new account you create also works.
+>
+> update output/harness.md with how auth works (what you store for a user and how passwords are protected)
+>
+> *(screenshot: test user test@campuscustoms.yale.edu / password; hash function PBKDF2-HMAC-SHA256, 120,000 iterations, stored as pbkdf2_sha256$salt$hash)*

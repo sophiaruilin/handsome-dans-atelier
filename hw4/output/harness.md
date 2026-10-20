@@ -111,3 +111,71 @@ A floating panel in the bottom-right corner, on every page. I chose a floating p
 cd backend && .venv/Scripts/uvicorn main:app --port 8000
 cd frontend && npm run dev
 ```
+
+## Problem 4 — Create account and log in
+
+### What's stored for each user (`users` table)
+
+| Field | What goes in it |
+|---|---|
+| `id` | Auto-assigned number |
+| `first_name`, `last_name` | As typed, with extra spaces trimmed |
+| `name` | First and last name together, for display |
+| `email` | Lowercased, so `Ada@Yale.edu` and `ada@yale.edu` count as one account. It is unique |
+| `password_hash` | `pbkdf2_sha256$<salt>$<hash>`. **The password itself is never stored**, and it never appears in logs or API responses |
+| `created_at` | Set by the database when the account is created |
+
+Example of a new account's stored value: `pbkdf2_sha256$1c042ca8cd1bb8d4038f1ec25146a877$47935e69…c6400`
+
+### How passwords are protected
+
+1. **Hashing at sign-up:** we generate a **random 16-byte salt** for each user (`secrets.token_hex`, written as 32 hex characters), then run **PBKDF2-HMAC-SHA256 with 120,000 iterations** over the password, using that salt. The result is stored as `algorithm$salt$hash`.
+   - The salt makes every user's hash unique, even when two people pick the same password. That defeats precomputed "rainbow tables".
+   - The 120,000 iterations make every guess slow, which multiplies the cost of brute-force attacks on a stolen database.
+2. **Checking at login (never un-hash):**
+   - Split the stored string and read the salt from the middle piece. No new salt is made at login.
+   - Hash the typed password with that same salt, algorithm and iteration count.
+   - Compare the result with the stored hash using `hmac.compare_digest`, which takes the same time however many characters match, so response timing doesn't leak the hash.
+3. **The same settings everywhere:** sign-up and login both use the constants in `backend/auth.py` (`ALGORITHM`, `ITERATIONS`, salt handling). The seeded users were hashed with these same settings, so their passwords still match.
+4. **No clues for attackers:**
+   - A wrong email and a wrong password both return "Email or password is incorrect."
+   - When the email doesn't exist, the server still runs a full dummy hash, so the response takes just as long.
+5. **Rate limiting:** after 5 failed logins for the same email and IP address within 15 minutes, the server refuses attempts until the window passes (HTTP 429).
+6. **Password rules at sign-up** (checked live in the browser and again on the server):
+   - 12 to 128 characters
+   - at least one letter and one number
+   - not on a common-password list
+   - doesn't contain the user's name or the start of their email
+   - typed twice, and both entries must match
+
+   These follow NIST SP 800-63B and OWASP guidance: **length beats complexity rules**, so we require 12+ characters and block the most-guessed passwords instead of demanding symbols.
+
+### Sessions after login
+
+- The server creates a random 32-byte token and sends it in a cookie (`cc_session`), set to:
+  - `HttpOnly`, so page scripts can't read it
+  - `SameSite=Lax`, so other sites can't trigger requests that use it
+  - `Secure` when deployed (`COOKIE_SECURE=true`)
+- The database stores only the token's **SHA-256 hash**, in a new `sessions` table with a 7-day expiry. Someone holding a copy of the database can't log in with it.
+- Logging out deletes the session row and the cookie.
+
+| Route | What it does |
+|---|---|
+| `POST /api/auth/signup` | Checks the password rules and that the two passwords match, rejects duplicate emails, stores the hashed account and logs the user in |
+| `POST /api/auth/login` | Verifies the password as described above, applies rate limiting and starts a session |
+| `POST /api/auth/logout` | Ends the session |
+| `GET /api/auth/me` | Returns the logged-in user, or `null` |
+
+### Verified
+
+- **Seeded test user:** `test@campuscustoms.yale.edu` / `password` logs in; the nav bar shows "Hi, Test!". A wrong password, or a different capital letter, is rejected.
+- **New account:** created Handsome Dan (`handsome.dan@campuscustoms.yale.edu`) in the app. The account was stored as user 4 with a new random salt, logged in automatically, logged out, then logged back in with the same password.
+- **Rejected as expected:** a weak password, mismatched passwords, and a duplicate email typed in different capitals.
+
+### Best practice, and what I'd change for a real launch
+
+- **Algorithm:** OWASP's first choice today is **Argon2id**, which also uses lots of memory so GPUs can't guess quickly. If staying with PBKDF2-SHA256, OWASP recommends **600,000 iterations**. We kept 120,000 because the assignment and the seeded users require it.
+- **Upgrade path:** add the iteration count (or algorithm) to the stored string. Then, when a user logs in successfully, re-hash their password with the stronger setting. Users never notice.
+- **Pepper:** a secret key kept outside the database, in `.env` or a secrets manager, and mixed into every hash. Then a stolen database alone isn't enough to crack passwords.
+- **Breached-password check:** check new passwords against Have I Been Pwned's k-anonymity API, which never sends the password itself.
+- **HTTPS only, plus multi-factor authentication** (MFA) for admin accounts.

@@ -1,13 +1,29 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/context'
 
-// Form only for now: the back end gets login and sign-up routes when accounts are wired in.
 export default function Login() {
-  const [note, setNote] = useState('')
+  const { login } = useAuth()
+  const navigate = useNavigate()
+  const from = (useLocation().state as { from?: string } | null)?.from ?? '/'
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault()
-    setNote('Accounts are coming soon. For now, browse as a guest.')
+    setError('')
+    setBusy(true)
+    try {
+      await login(email, password)
+      navigate(from, { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.')
+      setPassword('')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -17,16 +33,33 @@ export default function Login() {
       <form onSubmit={submit} className="auth-form">
         <label>
           Email
-          <input type="email" required autoComplete="email" placeholder="you@yale.edu" />
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@yale.edu"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </label>
         <label>
           Password
-          <input type="password" required autoComplete="current-password" />
+          <input
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </label>
-        <button type="submit" className="btn">
-          Log in
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="submit" className="btn" disabled={busy}>
+          {busy ? 'Logging in…' : 'Log in'}
         </button>
-        {note && <p className="muted">{note}</p>}
       </form>
       <p>
         New here? <Link to="/create-account">Create an account</Link>
