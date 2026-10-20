@@ -3,11 +3,12 @@
 run_agent(message, history, product_id, user) -> ChatResponse with the reply, the product
 cards to show under it, and which tools ran.
 
-- Instructions: prompts/prompt.md, plus a short per-request context (the product page the
+- Instructions: prompts/prompt.md (re-read each message), plus a short per-request context (the product page the
   shopper is on, and their first name if logged in).
 - Model: gpt-6-astra via Portkey (PORTKEY_API_KEY in .env), through the OpenAI Responses API.
   Override with OPENAI_MODEL=...
-- Tools: thin wrappers over tools.py, which reads the shop database read-only.
+- Tools: search_products, get_product_info, check_stock and catalogue_overview. Thin wrappers
+  over tools.py, which reads the shop database read-only, returning typed results (models.py).
 
 Try it without the website:  python agent.py "Do you have navy hoodies under $70?"
 """
@@ -20,13 +21,24 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
-from pydantic_ai import Agent, RunContext, UsageLimits
+from pydantic_ai import Agent, ModelRetry, RunContext, UsageLimits
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, TextPart, UserPromptPart
 from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 import tools
-from models import MAX_CARDS, MAX_HISTORY_MESSAGES, ChatMessage, ChatResponse, ShopReply, User
+from models import (
+    MAX_CARDS,
+    MAX_HISTORY_MESSAGES,
+    CatalogueOverview,
+    ChatMessage,
+    ChatResponse,
+    ProductInfo,
+    ProductSearchResult,
+    ShopReply,
+    StockCheck,
+    User,
+)
 
 BACKEND_DIR = Path(__file__).resolve().parent
 PROMPT_PATH = BACKEND_DIR / "prompts" / "prompt.md"
@@ -47,11 +59,14 @@ class ShopState:
     tools_used: list[str] = field(default_factory=list)
 
 
-agent = Agent(
-    deps_type=ShopState,
-    output_type=ShopReply,
-    instructions=PROMPT_PATH.read_text(encoding="utf-8"),
-)
+agent = Agent(deps_type=ShopState, output_type=ShopReply)
+
+
+@agent.instructions
+def shop_prompt() -> str:
+    # Read on every message: `uvicorn --reload` only watches .py files, so edits to prompt.md
+    # take effect without a restart.
+    return PROMPT_PATH.read_text(encoding="utf-8")
 
 
 @agent.instructions
@@ -68,6 +83,14 @@ def page_context(ctx: RunContext[ShopState]) -> str:
     return "\n".join(lines)
 
 
+def _lookup(product_id: str):
+    """Product for an id, or ask the model to search first (it retries with a real id)."""
+    p = tools.get_product(product_id)
+    if not p:
+        raise ModelRetry(f"No product has product_id {product_id!r}. Call search_products to find the right id.")
+    return p
+
+
 @agent.tool
 def search_products(
     ctx: RunContext[ShopState],
@@ -77,32 +100,48 @@ def search_products(
     max_price: float | None = None,
     size: str = "",
     in_stock_only: bool = False,
-) -> dict:
-    """Search the Campus Customs catalogue. Every filter is optional; combine only what the shopper asked for.
+) -> ProductSearchResult:
+    """Find products. Every filter is optional; combine only what the shopper asked for.
+
+    Returns summaries (price, colors, which sizes are in stock). For exact stock counts or the full
+    description, follow up with get_product_info or check_stock.
 
     Args:
         query: keywords that must all appear in the name, description, colors or tags, e.g. "hockey" or "Saybrook".
         garment_type: e.g. "hoodie", "crewneck", "t-shirt", "quarter-zip", "jacket".
         color: e.g. "navy", "gray", "white".
         max_price: highest price in US dollars.
-        size: only products with this size in stock: XS, S, M, L, XL or XXL.
+        size: only products with this size in stock, e.g. "L" or "large".
         in_stock_only: skip styles that are sold out in every size.
     """
     ctx.deps.tools_used.append("search_products")
-    total, found = tools.search_products(query, garment_type, color, max_price, size, in_stock_only)
-    return {"total_matches": total, "showing": len(found), "products": [tools.for_agent(p) for p in found]}
+    return tools.search_products(query, garment_type, color, max_price, size, in_stock_only)
 
 
 @agent.tool
-def get_product(ctx: RunContext[ShopState], product_id: str) -> dict:
-    """Full details and stock by size for one product_id (from search results or the page context)."""
-    ctx.deps.tools_used.append("get_product")
-    p = tools.get_product(product_id)
-    return tools.for_agent(p) if p else {"error": f"No product with id {product_id!r}. Search first."}
+def get_product_info(ctx: RunContext[ShopState], product_id: str) -> ProductInfo:
+    """Full description, price, colors and units in stock for every size of one product.
+
+    Use for "tell me about", "how much is" and "which sizes do you have" questions.
+    """
+    ctx.deps.tools_used.append("get_product_info")
+    return tools.product_info(_lookup(product_id))
 
 
 @agent.tool
-def catalogue_overview(ctx: RunContext[ShopState]) -> dict:
+def check_stock(ctx: RunContext[ShopState], product_id: str, size: str) -> StockCheck:
+    """Is one size of one product in stock, and how many are left?
+
+    Args:
+        product_id: from search results or the page context.
+        size: the size the shopper asked about, as they wrote it, e.g. "L", "large" or "2XL".
+    """
+    ctx.deps.tools_used.append("check_stock")
+    return tools.stock_check(_lookup(product_id), size)
+
+
+@agent.tool
+def catalogue_overview(ctx: RunContext[ShopState]) -> CatalogueOverview:
     """Garment types (with counts), colors, sizes and price range the shop carries."""
     ctx.deps.tools_used.append("catalogue_overview")
     return tools.catalogue_overview()
@@ -126,7 +165,13 @@ def _client_and_model() -> tuple[AsyncOpenAI, OpenAIResponsesModel]:
     client = AsyncOpenAI(
         api_key="unused",  # Portkey authenticates with the header below
         base_url=PORTKEY_BASE_URL,
-        default_headers={"x-portkey-api-key": api_key, "x-portkey-provider": "openai"},
+        default_headers={
+            "x-portkey-api-key": api_key,
+            "x-portkey-provider": "openai",
+            # The class Portkey key caches identical requests. A replayed answer could quote stock
+            # that has since changed, so always ask for a fresh response.
+            "x-portkey-cache-force-refresh": "true",
+        },
     )
     model = OpenAIResponsesModel(
         os.getenv("OPENAI_MODEL") or DEFAULT_MODEL,

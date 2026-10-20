@@ -37,6 +37,76 @@ class Product(BaseModel):
     inventory: list[SizeStock]
 
 
+# --- Agent tool results ----------------------------------------------------------------------
+# What the agent's tools return. Every number here comes straight from campus_customs.db, so the
+# agent can quote prices and stock instead of guessing them.
+
+class SizeAvailability(BaseModel):
+    size: str
+    quantity: int = Field(description="Units left in this size, from the inventory table")
+    status: StockStatus
+    in_stock: bool
+
+
+class ProductInfo(BaseModel):
+    """get_product_info: everything a shopper might ask about one product."""
+
+    product_id: str
+    name: str
+    garment_type: str
+    description: str
+    price: float = Field(description="Price in US dollars, from the catalogue table")
+    colors: list[str]
+    stock_status: StockStatus = Field(description="Overall status across all sizes")
+    total_stock: int
+    sizes: list[SizeAvailability]
+    sizes_in_stock: list[str]
+    sizes_sold_out: list[str]
+
+
+class StockCheck(BaseModel):
+    """check_stock: availability of one size of one product."""
+
+    product_id: str
+    name: str
+    size_asked: str = Field(description="The size as the shopper wrote it")
+    size: str | None = Field(description="Matching shop size (XS-XXL), or null if we don't carry that size")
+    carried: bool = Field(description="False if the shop doesn't make this product in that size")
+    quantity: int
+    status: StockStatus | None
+    in_stock: bool
+    other_sizes_in_stock: list[str] = Field(description="Sizes of the same product that are in stock")
+    message: str = Field(description="Plain-English summary to base the answer on")
+
+
+class ProductSummary(BaseModel):
+    """One search hit: enough to pick products, not the full detail."""
+
+    product_id: str
+    name: str
+    garment_type: str
+    price: float
+    colors: list[str]
+    stock_status: StockStatus
+    sizes_in_stock: list[str]
+
+
+class ProductSearchResult(BaseModel):
+    total_matches: int
+    showing: int
+    products: list[ProductSummary]
+    note: str = ""
+
+
+class CatalogueOverview(BaseModel):
+    product_count: int
+    garment_types: dict[str, int]
+    colors: list[str]
+    sizes: list[str]
+    price_min: float
+    price_max: float
+
+
 class WaitlistRequest(BaseModel):
     product_id: str
     size: str | None = None

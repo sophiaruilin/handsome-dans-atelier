@@ -140,3 +140,18 @@ Template for each problem (copy for each new problem):
 > uvicorn main:app --reload --port 8000
 >
 > *(screenshot: backend/prompts/prompt.md — system prompt (grow this same file later); backend/agent.py — agent entry / wiring; backend/tools.py — tools the agent can call; backend/models.py — Pydantic / PydanticAI structured types)*
+
+## Problem 6 — Tools: Product info and stock
+
+**Prompt (my own words):**
+
+> Great! Problem 6: Tools: Produc tinfo and stock
+>
+> Give the agent tools that look up real info from campus_customs.db
+> product description, price, how many are in stock by size when customer asks
+>
+> the agent must use the database - it should not invent prices or quantities. if size is out of stock, say so clearly.
+>
+> expand prompts/prompt.md so agent knows to call these tools for price and stock questions. add or update return types in models.py
+>
+> in output/harness.md, list each tool and explain which model fields you chose for lookup results and why.

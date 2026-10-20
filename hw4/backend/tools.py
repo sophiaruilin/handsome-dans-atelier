@@ -12,7 +12,17 @@ import sqlite3
 from collections import Counter
 from pathlib import Path
 
-from models import Product, SizeStock, StockStatus
+from models import (
+    CatalogueOverview,
+    Product,
+    ProductInfo,
+    ProductSearchResult,
+    ProductSummary,
+    SizeAvailability,
+    SizeStock,
+    StockCheck,
+    StockStatus,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "data" / "campus_customs.db"
@@ -105,9 +115,12 @@ def search_products(
     max_price: float | None = None,
     size: str = "",
     in_stock_only: bool = False,
-) -> tuple[int, list[Product]]:
-    """Filter the catalogue. Returns (total matches, first MAX_RESULTS matches)."""
-    size = size.strip().upper()
+) -> ProductSearchResult:
+    """Filter the catalogue and return the first MAX_RESULTS matches as summaries."""
+    shop_size = normalize_size(size) if size else None
+    note = ""
+    if size and not shop_size:
+        note = f"We don't carry size {size!r}; sizes are {', '.join(SIZE_ORDER)}. Size filter ignored."
     results = []
     for p in load_products():
         text = " ".join([p.name, p.garment_type, p.description, *p.colors, *p.search_tags]).lower()
@@ -119,35 +132,103 @@ def search_products(
             continue
         if max_price is not None and p.price > max_price:
             continue
-        if size and not any(s.size == size and s.quantity > 0 for s in p.inventory):
+        if shop_size and not any(s.size == shop_size and s.quantity > 0 for s in p.inventory):
             continue
         if in_stock_only and p.stock_status == "sold_out":
             continue
         results.append(p)
-    return len(results), results[:MAX_RESULTS]
+    shown = results[:MAX_RESULTS]
+    if len(results) > len(shown):
+        note = (note + " " if note else "") + f"Showing {len(shown)} of {len(results)}; add filters to narrow down."
+    return ProductSearchResult(
+        total_matches=len(results), showing=len(shown), products=[summary(p) for p in shown], note=note
+    )
 
 
-def catalogue_overview() -> dict:
+def catalogue_overview() -> CatalogueOverview:
     """Garment types, colors, sizes and price range in the shop, so the agent can pick search filters."""
     products = load_products()
-    return {
-        "product_count": len(products),
-        "garment_types": dict(Counter(p.garment_type.lower() for p in products).most_common()),
-        "colors": sorted({c.lower() for p in products for c in p.colors}),
-        "sizes": SIZE_ORDER,
-        "price_range": [min(p.price for p in products), max(p.price for p in products)],
-    }
+    return CatalogueOverview(
+        product_count=len(products),
+        garment_types=dict(Counter(p.garment_type.lower() for p in products).most_common()),
+        colors=sorted({c.lower() for p in products for c in p.colors}),
+        sizes=SIZE_ORDER,
+        price_min=min(p.price for p in products),
+        price_max=max(p.price for p in products),
+    )
 
 
-def for_agent(p: Product) -> dict:
-    """Compact product facts for the model (no image paths or tags it doesn't need)."""
-    return {
-        "product_id": p.product_id,
-        "name": p.name,
-        "garment_type": p.garment_type,
-        "price": p.price,
-        "colors": p.colors,
-        "description": p.description,
-        "stock_status": p.stock_status,
-        "stock_by_size": {s.size: s.quantity for s in p.inventory},
-    }
+# --- Lookups for the agent -------------------------------------------------------------------
+
+SIZE_ALIASES = {
+    "xs": "XS", "extra small": "XS", "x-small": "XS", "xsmall": "XS",
+    "s": "S", "small": "S", "sm": "S",
+    "m": "M", "medium": "M", "med": "M",
+    "l": "L", "large": "L", "lg": "L",
+    "xl": "XL", "extra large": "XL", "x-large": "XL", "xlarge": "XL",
+    "xxl": "XXL", "2xl": "XXL", "xx-large": "XXL", "xxlarge": "XXL", "2x": "XXL", "double xl": "XXL",
+}
+
+
+def normalize_size(size: str) -> str | None:
+    """'large' -> 'L', '2XL' -> 'XXL'. None if the shop doesn't carry that size (e.g. 3XL)."""
+    return SIZE_ALIASES.get(re.sub(r"\s+", " ", size.strip().lower()))
+
+
+def summary(p: Product) -> ProductSummary:
+    return ProductSummary(
+        product_id=p.product_id,
+        name=p.name,
+        garment_type=p.garment_type,
+        price=p.price,
+        colors=p.colors,
+        stock_status=p.stock_status,
+        sizes_in_stock=[s.size for s in p.inventory if s.quantity > 0],
+    )
+
+
+def product_info(p: Product) -> ProductInfo:
+    return ProductInfo(
+        product_id=p.product_id,
+        name=p.name,
+        garment_type=p.garment_type,
+        description=p.description,
+        price=p.price,
+        colors=p.colors,
+        stock_status=p.stock_status,
+        total_stock=p.total_stock,
+        sizes=[
+            SizeAvailability(size=s.size, quantity=s.quantity, status=s.status, in_stock=s.quantity > 0)
+            for s in p.inventory
+        ],
+        sizes_in_stock=[s.size for s in p.inventory if s.quantity > 0],
+        sizes_sold_out=[s.size for s in p.inventory if s.quantity == 0],
+    )
+
+
+def stock_check(p: Product, size_asked: str) -> StockCheck:
+    in_stock = [s.size for s in p.inventory if s.quantity > 0]
+    size = normalize_size(size_asked)
+    row = next((s for s in p.inventory if s.size == size), None)
+    others = [s for s in in_stock if s != size]
+    if row is None:
+        message = (
+            f"We don't carry {p.name} in size {size_asked}. "
+            f"It comes in {', '.join(s.size for s in p.inventory)}."
+        )
+        return StockCheck(
+            product_id=p.product_id, name=p.name, size_asked=size_asked, size=None, carried=False,
+            quantity=0, status=None, in_stock=False, other_sizes_in_stock=in_stock, message=message,
+        )
+    if row.quantity == 0:
+        message = f"{p.name} is SOLD OUT in size {row.size}."
+        message += f" In stock in: {', '.join(others)}." if others else " It is sold out in every size."
+    elif row.status == "selling_fast":
+        message = f"{p.name} in size {row.size}: only {row.quantity} left (selling fast)."
+    else:
+        message = f"{p.name} in size {row.size}: {row.quantity} in stock."
+    return StockCheck(
+        product_id=p.product_id, name=p.name, size_asked=size_asked, size=row.size, carried=True,
+        quantity=row.quantity, status=row.status, in_stock=row.quantity > 0,
+        other_sizes_in_stock=others, message=message,
+    )

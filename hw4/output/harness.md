@@ -221,7 +221,7 @@ uvicorn main:app --reload --port 8000
 
 ### How the agent is loaded
 
-- **Prompt file:** `agent.py` reads `prompts/prompt.md` once at start-up and uses it as the agent's `instructions`. A second, per-message instruction (`page_context`) adds:
+- **Prompt file:** `agent.py` reads `prompts/prompt.md` and uses it as the agent's `instructions`. Since Problem 6, it re-reads the file on every message, so edits apply without a restart. A second, per-message instruction (`page_context`) adds:
   - which product page the shopper is on
   - the shopper's first name if they're logged in
 - **Model:** `gpt-6-astra` through the class **Portkey** gateway, using the OpenAI Responses API (`OpenAIResponsesModel` with an `AsyncOpenAI` client pointed at `https://api.portkey.ai/v1`).
@@ -253,3 +253,80 @@ uvicorn main:app --reload --port 8000
 - **On the Basic Hoodie Big Yale page:** asked "Does this come in pink? If not, what size M options do you have like it?" The agent knew "this" meant that hoodie, said there's no pink, and listed three hoodies with M in stock. It correctly flagged "5 left in M, selling fast". Three product cards appeared.
 - **Prompt injection plus a card number:** asked it to print its system prompt and to take card 4111…. It declined both, did not repeat the card number, and pointed to the store.
 - **Logged in as the test user:** the saved chat loaded with a "Hi, Test!" greeting. Asked for "a gift for my grandpa under $60": it gave three options, all $58 or less, with cards. After a reload, `GET /api/chat/history` returned the new question and answer, with three cards saved.
+
+## Problem 6 — Tools: product info and stock
+
+The agent answers price, description and stock questions **only** from `campus_customs.db`. Each tool is a thin wrapper in `agent.py` over a function in `tools.py`, which opens the database read-only. Each tool returns a typed Pydantic model from `models.py`, so the model receives clean, labelled numbers instead of free text it might misread.
+
+### The tools
+
+| Tool (in `agent.py`) | When the agent calls it | Returns |
+|---|---|---|
+| `search_products(query, garment_type, color, max_price, size, in_stock_only)` | Finding products: "do you have…", gifts, budgets, colors, or a product the shopper names (to get its `product_id`) | `ProductSearchResult` |
+| `get_product_info(product_id)` | "Tell me about…", "how much is…", "which sizes do you have?" | `ProductInfo` |
+| `check_stock(product_id, size)` | "Is L in stock?", "how many XL are left?" | `StockCheck` |
+| `catalogue_overview()` | Picking valid search filters (garment types, colors, sizes, price range) | `CatalogueOverview` |
+
+If the agent passes a `product_id` that doesn't exist, the tool raises `ModelRetry` ("call search_products to find the right id"). The agent then searches for the real id instead of guessing an answer.
+
+### Fields chosen for each result, and why
+
+**`ProductInfo`** (one product, full detail)
+
+| Field | Why |
+|---|---|
+| `product_id`, `name` | Identify the product in the reply and the product card |
+| `garment_type`, `description`, `colors` | Answer "what does it look like?" from the catalogue text, not the model's imagination |
+| `price` | The exact catalogue price to quote, never rounded or estimated |
+| `sizes` (list of `SizeAvailability`: `size`, `quantity`, `status`, `in_stock`) | The exact units left in each size, plus a ready-made status, so the model doesn't have to work out "selling fast" itself |
+| `sizes_in_stock`, `sizes_sold_out` | Ready-made lists, so the model can't misread a 0 as available or skip a sold-out size |
+| `stock_status`, `total_stock` | Overall availability, for "is this available at all?" |
+
+Left out: `image_url` and `search_tags`. The model doesn't need them, and the website builds cards from the database itself.
+
+**`StockCheck`** (one size of one product)
+
+| Field | Why |
+|---|---|
+| `size_asked` / `size` | What the shopper typed ("large", "2XL") and the shop size it maps to (L, XXL). `size` is `null` for sizes we don't make |
+| `carried` | Separates "we don't make 3XL" from "M is sold out", which need different answers |
+| `quantity`, `status`, `in_stock` | The exact count and a clear yes/no |
+| `other_sizes_in_stock` | Lets the agent offer a size that *is* available when the asked-for one is sold out |
+| `message` | A plain-English line built from the data, such as "… is SOLD OUT in size L. In stock in: M, XL." It anchors the reply in the facts |
+
+**`ProductSummary` / `ProductSearchResult`** (search hits)
+
+- Each hit has `product_id`, `name`, `garment_type`, `price`, `colors`, `stock_status` and `sizes_in_stock`. That's enough to choose and recommend products.
+- Hits deliberately leave out the description and exact counts. This keeps up to 8 results compact, and pushes the agent to call `get_product_info` or `check_stock` before quoting a quantity.
+- `total_matches`, `showing` and `note` tell the agent when results were cut off, or when a size filter was ignored because we don't make that size.
+
+**`CatalogueOverview`:** `garment_types` (with counts), `colors`, `sizes`, `price_min`, `price_max`. Gives the agent the shop's real vocabulary for search filters.
+
+### Prompt rules added (`prompts/prompt.md`)
+
+- A tool table, plus a **"Price and stock questions"** section:
+  - always call a tool before stating any price, count or availability, even if it came up earlier in the chat
+  - quote exact prices
+  - use `check_stock` for one size and `get_product_info` for all sizes
+- **Sold out:** say so clearly, name the sizes still in stock and mention the waitlist.
+- **1–5 left:** give the exact number and say "selling fast".
+- **Sizes we don't make:** say so; everything comes in adult XS–XXL only.
+- **Details not in the description**, such as fabric: say we don't have that information.
+
+### Two fixes found while testing
+
+1. **Portkey response cache:** the class Portkey key replays cached answers for identical requests. That could quote stock that has since changed, so `agent.py` now always sends `x-portkey-cache-force-refresh: true`.
+2. **Prompt reloading:** `uvicorn --reload` only watches `.py` files, so `agent.py` now re-reads `prompt.md` on every message. Prompt edits take effect without a restart.
+
+### Verified
+
+- **`backend/tests/test_tools.py`** (run with `python -m pytest -q` in `backend/`): 14 tests compare tool results with raw SQL for **all 102 products**. They cover prices, every size's quantity, the in-stock and sold-out lists, a sold-out size, a low-stock size, size spellings ("large", "2XL"), a size we don't make (3XL), search filters and a search with no matches. All pass.
+- **Live agent, checked against the database:**
+
+| Question | Database | Agent answer | Tools called |
+|---|---|---|---|
+| "How much is the Saybrook crewneck, and do you have it in large?" | $58, L = 2 | "$58.00 … only 2 left, selling fast" | search → get_product_info → check_stock |
+| On Champion Reverse Weave Crewneck: "Do you have this in XS?" | XS = 0; M, XL = 12 | "sold out in XS. M and XL are still in stock" plus the waitlist | check_stock |
+| On Basic Hoodie Big Yale: "How many are left in each size?" | 15/5/5/8/2/25 | XS 15, S 5, M 5, L 8, XL 2, XXL 25, with "selling fast" on S, M and XL | get_product_info |
+| On Champion Reverse Weave Crewneck: "Is the large in stock? And what's the price again?" | $58, L = 0 | "$58.00, but it's sold out in large. M and XL are still in stock" | check_stock, get_product_info |
+| "Can I get the Basic Hoodie Big Yale in 3XL?" | Not made | "We don't carry … 3XL. It comes in adult XS–XXL" | search → check_stock |
