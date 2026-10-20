@@ -23,6 +23,7 @@ export interface Product {
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
+  products?: Product[] // cards shown under an assistant reply
 }
 
 export interface User {

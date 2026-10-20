@@ -1,121 +1,66 @@
-"""FastAPI back end for the Campus Customs website.
+"""FastAPI back end for the Campus Customs website (the file uvicorn runs).
 
-Serves the product catalogue, stock by size and product images from data/campus_customs.db,
-handles create-account / login / logout (see auth.py), records waitlist sign-ups, and has a
-stub chat route that Problem 5 will turn into the agent.
+- Products: catalogue, stock by size and product images from data/campus_customs.db (tools.py).
+- Accounts: create account / log in / log out with session cookies (auth.py).
+- Chat: /api/chat runs the PydanticAI shop agent (agent.py) and saves logged-in shoppers' chats.
+- Waitlist: back-in-stock email sign-ups.
 
-Run:  cd backend && .venv/Scripts/uvicorn main:app --port 8000
+Run:  cd backend && uvicorn main:app --reload --port 8000
 Docs: http://127.0.0.1:8000/docs
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
 
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, EmailStr, Field
+from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
 
 import auth
+import tools
+from agent import run_agent
+from models import (
+    MAX_HISTORY_MESSAGES,
+    ChatMessage,
+    ChatRequest,
+    ChatResponse,
+    LoginRequest,
+    Product,
+    SignupRequest,
+    User,
+    WaitlistRequest,
+)
 
-ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = ROOT / "data" / "campus_customs.db"
-PRODUCTS_DIR = ROOT / "data" / "products"
-# Waitlist sign-ups go in their own file so the shop database stays read-only.
+log = logging.getLogger("campus-customs")
+
+# Waitlist sign-ups go in their own file so the shop's product tables are never written.
 WAITLIST_DB = Path(__file__).resolve().parent / "waitlist.db"
-
-SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL"]
-LOW_STOCK_PER_SIZE = 5    # a size with 1-5 left is "selling fast"
-LOW_STOCK_PER_STYLE = 25  # a style with 1-25 left across all sizes is "selling fast"
-
-StockStatus = Literal["in_stock", "selling_fast", "sold_out"]
-
-
-class SizeStock(BaseModel):
-    size: str
-    quantity: int
-    status: StockStatus
-
-
-class Product(BaseModel):
-    product_id: str
-    name: str
-    garment_type: str
-    description: str
-    colors: list[str]
-    search_tags: list[str]
-    image_url: str
-    price: float
-    total_stock: int
-    stock_status: StockStatus
-    inventory: list[SizeStock]
-
-
-class WaitlistRequest(BaseModel):
-    product_id: str
-    size: str | None = None
-    email: EmailStr
-
-
-class SignupRequest(BaseModel):
-    first_name: str = Field(min_length=1, max_length=60)
-    last_name: str = Field(min_length=1, max_length=60)
-    email: EmailStr
-    password: str = Field(max_length=auth.PASSWORD_MAX)
-    confirm_password: str = Field(max_length=auth.PASSWORD_MAX)
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(max_length=auth.PASSWORD_MAX)
-
-
-class User(BaseModel):
-    id: int
-    first_name: str
-    last_name: str
-    name: str
-    email: str
-
-
-class ChatRequest(BaseModel):
-    message: str = Field(min_length=1, max_length=2000)
-    history: list[dict[str, str]] = Field(default_factory=list)
-    product_id: str | None = None  # the product page the shopper is viewing, if any
-
-
-class ChatResponse(BaseModel):
-    reply: str
-    products: list[Product] = Field(default_factory=list)
-
+# Cookies need HTTPS when deployed; local development runs on plain http://localhost.
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 
 app = FastAPI(title="Campus Customs API")
 
-# Let the Vite dev server (port 5173, or 5174+ if taken) call this API (port 8000).
+# Let the Vite dev server call this API directly too (it normally goes through the Vite proxy).
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
+    allow_credentials=True,
 )
-app.mount("/media/products", StaticFiles(directory=PRODUCTS_DIR), name="product-images")
-
-
-def shop_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(f"file:{DB_PATH.as_posix()}?mode=ro", uri=True)
-    conn.row_factory = sqlite3.Row
-    return conn
+app.mount("/media/products", StaticFiles(directory=tools.PRODUCTS_DIR), name="product-images")
 
 
 def users_db() -> sqlite3.Connection:
-    """Writable connection for accounts and sessions. Product tables are only ever read."""
-    conn = sqlite3.connect(DB_PATH)
+    """Writable connection for accounts, sessions and chat history. Product tables are only ever read."""
+    conn = sqlite3.connect(tools.DB_PATH)
     conn.row_factory = sqlite3.Row
     auth.ensure_sessions_table(conn)
     return conn
@@ -136,75 +81,27 @@ def waitlist_db() -> sqlite3.Connection:
     return conn
 
 
-def size_status(quantity: int) -> StockStatus:
-    if quantity == 0:
-        return "sold_out"
-    return "selling_fast" if quantity <= LOW_STOCK_PER_SIZE else "in_stock"
-
-
-def style_status(total: int) -> StockStatus:
-    if total == 0:
-        return "sold_out"
-    return "selling_fast" if total <= LOW_STOCK_PER_STYLE else "in_stock"
-
-
-def load_products(product_id: str | None = None) -> list[Product]:
-    with shop_db() as conn:
-        where, args = ("WHERE product_id = ?", (product_id,)) if product_id else ("", ())
-        rows = conn.execute(f"SELECT * FROM catalogue {where} ORDER BY name", args).fetchall()
-        stock: dict[str, list[SizeStock]] = {}
-        for r in conn.execute("SELECT product_id, size, quantity FROM inventory"):
-            stock.setdefault(r["product_id"], []).append(
-                SizeStock(size=r["size"], quantity=r["quantity"], status=size_status(r["quantity"]))
-            )
-    products = []
-    for r in rows:
-        sizes = sorted(
-            stock.get(r["product_id"], []),
-            key=lambda s: SIZE_ORDER.index(s.size) if s.size in SIZE_ORDER else len(SIZE_ORDER),
-        )
-        total = sum(s.quantity for s in sizes)
-        products.append(
-            Product(
-                product_id=r["product_id"],
-                name=r["name"],
-                garment_type=r["garment_type"],
-                description=r["description"],
-                colors=json.loads(r["colors"]),
-                search_tags=json.loads(r["search_tags"]),
-                image_url="/media/" + r["image_file_path"],
-                price=r["price"],
-                total_stock=total,
-                stock_status=style_status(total),
-                inventory=sizes,
-            )
-        )
-    return products
-
+# --- Products ------------------------------------------------------------------------------
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "products": len(load_products())}
+    return {"ok": True, "products": len(tools.load_products())}
 
 
 @app.get("/api/products", response_model=list[Product])
 def list_products():
-    return load_products()
+    return tools.load_products()
 
 
 @app.get("/api/products/{product_id}", response_model=Product)
 def get_product(product_id: str):
-    found = load_products(product_id)
-    if not found:
+    product = tools.get_product(product_id)
+    if not product:
         raise HTTPException(404, "Product not found")
-    return found[0]
+    return product
 
 
-# --- Accounts ---------------------------------------------------------------------------
-
-# Cookies need HTTPS when deployed; local development runs on plain http://localhost.
-COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
-
+# --- Accounts ------------------------------------------------------------------------------
 
 def to_user(row: sqlite3.Row) -> User:
     # Seeded rows may predate first_name/last_name, so fall back to splitting the full name.
@@ -216,6 +113,12 @@ def to_user(row: sqlite3.Row) -> User:
         name=row["name"],
         email=row["email"],
     )
+
+
+def current_user(conn: sqlite3.Connection, token: str | None) -> User | None:
+    user_id = auth.session_user_id(conn, token)
+    row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone() if user_id else None
+    return to_user(row) if row else None
 
 
 def start_session(response: Response, conn: sqlite3.Connection, user_id: int) -> None:
@@ -283,12 +186,58 @@ def logout(response: Response, cc_session: str | None = Cookie(default=None)):
 @app.get("/api/auth/me", response_model=User | None)
 def me(cc_session: str | None = Cookie(default=None)):
     with users_db() as conn:
-        user_id = auth.session_user_id(conn, cc_session)
-        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone() if user_id else None
-    return to_user(row) if row else None
+        return current_user(conn, cc_session)
 
 
-# --- Waitlist and chat -------------------------------------------------------------------
+# --- Chat ----------------------------------------------------------------------------------
+
+def save_message(conn: sqlite3.Connection, user_id: int, role: str, content: str, products: list[Product]) -> None:
+    products_json = json.dumps([p.model_dump() for p in products]) if products else None
+    conn.execute(
+        "INSERT INTO chat_messages (user_id, role, content, products_json) VALUES (?, ?, ?, ?)",
+        (user_id, role, content, products_json),
+    )
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(body: ChatRequest, cc_session: str | None = Cookie(default=None)):
+    with users_db() as conn:
+        user = current_user(conn, cc_session)
+    product_id = body.product_id if body.product_id and tools.get_product(body.product_id) else None
+    try:
+        result = await run_agent(body.message, body.history, product_id, user)
+    except UsageLimitExceeded:
+        raise HTTPException(429, "That question needed too many steps. Try asking something more specific.")
+    except (ModelHTTPError, RuntimeError):
+        log.exception("chat failed")
+        raise HTTPException(502, "The shop assistant is unavailable right now. Please try again in a moment.")
+    if user:
+        with users_db() as conn:
+            save_message(conn, user.id, "user", body.message, [])
+            save_message(conn, user.id, "assistant", result.reply, result.products)
+    return result
+
+
+@app.get("/api/chat/history", response_model=list[ChatMessage])
+def chat_history(cc_session: str | None = Cookie(default=None)):
+    """A logged-in shopper's recent chat, so the widget picks up where they left off."""
+    with users_db() as conn:
+        user = current_user(conn, cc_session)
+        if not user:
+            return []
+        rows = conn.execute(
+            "SELECT role, content, products_json FROM chat_messages WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+            (user.id, MAX_HISTORY_MESSAGES),
+        ).fetchall()
+    messages = []
+    for r in reversed(rows):
+        # Re-read saved cards from the catalogue so prices and stock are current.
+        ids = [p["product_id"] for p in json.loads(r["products_json"] or "[]")]
+        messages.append(ChatMessage(role=r["role"], content=r["content"], products=tools.get_products(ids)))
+    return messages
+
+
+# --- Waitlist ------------------------------------------------------------------------------
 
 @app.post("/api/waitlist")
 def join_waitlist(body: WaitlistRequest):
@@ -302,13 +251,3 @@ def join_waitlist(body: WaitlistRequest):
         )
     size = f" in size {body.size}" if body.size else ""
     return {"ok": True, "message": f"You're on the list! We'll email {body.email} when {product.name}{size} is back."}
-
-
-@app.post("/api/chat", response_model=ChatResponse)
-def chat(body: ChatRequest):
-    # Stub until Problem 5 wires in the shop agent.
-    return ChatResponse(
-        reply="Thanks for your message! Our shop assistant is still in training. "
-        "Soon I'll help you find sizes, colors and gifts. "
-        "For now, browse the Products page or visit us at 57 Broadway, New Haven."
-    )

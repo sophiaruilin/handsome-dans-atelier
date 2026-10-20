@@ -34,12 +34,18 @@ export const joinWaitlist = (productId: string, email: string, size?: string) =>
     postJson({ product_id: productId, email, size: size ?? null }),
   )
 
-// Stub today: the back end returns a canned reply. Problem 5 swaps in the shop agent behind the same route.
+// The back end runs the PydanticAI shop agent and, for logged-in shoppers, saves the chat.
 export const sendChat = (message: string, history: ChatMessage[], productId?: string) =>
-  request<{ reply: string; products: Product[] }>(
+  request<{ reply: string; products: Product[]; tools_used: string[] }>(
     '/api/chat',
-    postJson({ message, history, product_id: productId ?? null }),
+    postJson({
+      message,
+      history: history.map(({ role, content }) => ({ role, content })),
+      product_id: productId ?? null,
+    }),
   )
+
+export const getChatHistory = () => request<ChatMessage[]>('/api/chat/history')
 
 // Accounts. The session lives in an HttpOnly cookie that the browser sends automatically.
 export const getMe = () => request<User | null>('/api/auth/me')

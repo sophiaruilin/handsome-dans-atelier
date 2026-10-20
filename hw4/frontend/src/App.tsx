@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router-dom'
+import { useAuth } from './auth/context'
 import ChatWidget from './components/ChatWidget'
 import NavBar from './components/NavBar'
 import About from './pages/About'
@@ -10,6 +11,7 @@ import ProductDetail from './pages/ProductDetail'
 import Products from './pages/Products'
 
 export default function App() {
+  const { user, loading } = useAuth()
   return (
     <>
       <NavBar />
@@ -30,7 +32,8 @@ export default function App() {
         </p>
         <p className="muted">Officially licensed Yale merchandise.</p>
       </footer>
-      <ChatWidget />
+      {/* Remount on login/logout so the chat matches who is signed in. */}
+      {!loading && <ChatWidget key={user?.id ?? 'guest'} />}
     </>
   )
 }

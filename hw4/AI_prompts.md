@@ -115,3 +115,28 @@ Template for each problem (copy for each new problem):
 > update output/harness.md with how auth works (what you store for a user and how passwords are protected)
 >
 > *(screenshot: test user test@campuscustoms.yale.edu / password; hash function PBKDF2-HMAC-SHA256, 120,000 iterations, stored as pbkdf2_sha256$salt$hash)*
+
+**Follow-up prompt:**
+
+> great!! may in confirm first, is it safe to have typed the actual hash function hree? how will you 'hide' it from records so it is safe and not accessed or used again by someone else, only if it is needed, and without revealing the hash? if that is best practice, that is.
+
+**What was lacking before:** The first write-up explained how passwords are hashed but not which parts must stay secret (passwords, hashes, session tokens, keys) and which parts are safe to publish (the algorithm and its settings).
+
+## Problem 5 — PydanticAI agent backend
+
+**Prompt (my own words):**
+
+> problem 5: pydanticAI agent backend
+>
+> build shop chatbot as a pydanticAI agent behind fastAPI plugged into front-end chat widget. put api app in backend/main.py the file i run with uvicorn. keep agent as these four file s next to it, same idea as hw3.
+>
+> do the above, as well as in main.py, expose a chat route so message from website returns with replay from agent, and whatever else you need for products/auth. you will need your ai model api key for the agent.
+>
+> put campus customs voice and safety basics into prompts/prompt.md (you will expand tools and safety later). start or update types in models.py for chat replies/product cards as needed.
+>
+> in output/harness.md, note how front end talks to fastapi and how agent is loaded (prompt file + model).
+>
+> make sure backend runs from backend/ folder like this
+> uvicorn main:app --reload --port 8000
+>
+> *(screenshot: backend/prompts/prompt.md — system prompt (grow this same file later); backend/agent.py — agent entry / wiring; backend/tools.py — tools the agent can call; backend/models.py — Pydantic / PydanticAI structured types)*
