@@ -1,0 +1,87 @@
+# HW 4 — AI prompt log
+
+This log records the AI-assisted work for every problem in HW 4. Each entry has the problem number and title, at least one prompt I wrote in my own words, and a follow-up prompt when one was needed, with one sentence on what the first response was missing.
+
+<!--
+Template for each problem (copy for each new problem):
+
+## Problem N — Title
+
+**Prompt (my own words):**
+
+> ...
+
+**Follow-up prompt:**
+
+> ...
+
+**What was lacking before:** One sentence.
+-->
+
+## Problem 1 — Vibe Coder Prompts
+
+**Prompt (my own words):**
+
+> create new folder hw4 - i am starting hw4 assignment
+
+**Follow-up prompt:**
+
+> same rules as our prior problems for homeworks, like problme number and name and instructions, etc. do you remember?
+
+**What was lacking before:** The first response only set up the folder and did not apply the prompt-log conventions from earlier homeworks.
+
+## Problem 2 — Analyze the Database
+
+**Prompt (my own words):**
+
+> Look at the database in the hw4 data folder data/campus_customs.db . start file output/harness.md and write down each table and its fields, and one short line on why each field matters for the shop or chatbot.
+> catalogue - important to show whole library or universe of options and choices
+> inventory - important to know how many quantities are left, or even if a product is out.
+> users - important to know types of audiences or customers.
+>
+> before we commit this, i want you to 1) give me feedback on how strong these are and if there are any other relevant fields you would include, and 2) tell me which program to ideally open up this file to view the fields myself, if you recommend i open it to see the fields myself.
+
+**Follow-up prompt:**
+
+> Yes, write output/harness.md with all four tables and a line for every field, building on my notes.
+
+**What was lacking before:** My first notes covered only three tables at a high level and missed `chat_messages` and the field-by-field reasons the assignment asks for.
+
+## Problem 3 — Build the Campus Customs Website
+
+**Prompt (my own words):**
+
+> Create Problem 3: Build the Campus Customs Website.
+> I need to do this next step. What do you need to scaffold this?
+>
+> *(screenshot: Scaffold a React + Vite + TypeScript front end for Campus Customs. Put a nav bar at the top that links to the main pages: Home, Products, About Us, Log in, Create account)*
+
+**Follow-up prompt:**
+
+> Before you execute the command, please incorporate  Campus Customs-style wording from yalebulldogblue.com for Home and About Us but write these pages in my own voice so give me a chance to work on the text.. give me the text and allow me chance to modify before you run the full command with this info.
+>
+> In addition, on the Products page that you create, show the product images from the catalogue (use the image paths in the database) with basic product info (at least including name, price, short description - let me know if any other basic product info you reocmmend including and why). make each product open a single-item page (large image on one side, full product text on the other - description, price, sizes/stock when you have them). clicking a card on products should take the shopper there.
+>
+> add a chat interface in the bottom right of the side, floating chat panel is fine - let me know if you recommend one way or another and why. it does not need to talk to an agent yet, a stub that will call my backend later is enough for this problem.
+>
+> I will need a small API soon to read the database. it is fine to start a simple fastAPI app in backend/main.py just to serve products and images then grow it into the agent backend in Problem 5.
+
+**What was lacking before:** The first plan scaffolded only empty pages with a nav bar, without shop wording, product pages, a chat panel or a backend to read the database.
+
+**Second follow-up prompt:**
+
+> for the wording, you can edit the text to be fun, cool, fit for unviersity students, yet also intellectual given they're a bright group and their praents and loved ones invested in their sucess are also checking out the site for gear. appeal to emotions, fitting in, representing the school proudly, as poitn fo connection of peers int he community. include all factual information that would be uesful like the address. show me the sample text draft of this style of text for this home and about us section before confirming it.
+>
+> Include the extra porduct info for color and how in stock the style is. for low stock, include a flame and red font with text "selling fast!" and for sold out, add an email field and button to "add to waitlist" and be notified when back in stock.
+>
+> on eaah single-item page, that sounds good to me on the buttons with stock counts and greyed out when sold out; implement the chang eabove here on low stock and waitlist.
+>
+> chat: go ahead wit hthe floating panel.
+>
+> i'm ready - build everything!
+
+**What was lacking before:** The first text draft was plain and factual, without the emotional pull of belonging and school pride, and the product pages had no low-stock or waitlist features.
+
+**Third follow-up prompt:**
+
+> Wow I love it! Move ahead with the text!
