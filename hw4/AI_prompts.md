@@ -195,3 +195,19 @@ Template for each problem (copy for each new problem):
 > then make sure all improvements actually show up in the running app!
 >
 > my Graders will read the write-up and look for the features! make me look outstanding pretty please, this ewbsite hsould really dazzle :)
+
+## Problem 10 — Style the website
+
+**Prompt (my own words):**
+
+> Problem 10: Style the website
+>
+> Add creative design so the site feels like a real campus customs storefront - fonts, color, hierarchy, motion, product presentation, chat feel. take inspirational design from the yale club nyc, the new haven lawn club. for all major iconic buildings and colleges on yale's campus, have them create a patterned wallpaper background with the assorted mix in off-white cream color with yale blue for the building designs, and use a victorian style aesthetic like what trader joes uses, to the building outlines. ask me any questions if you have. and since everyone loves the bulldog, include him almost like a logo, in a cute cartoonish victorian style way, under the main title of the website. have him featured in the chat as well, as if the user is speaking to him. in the search feature, have usres be able to serach by the school affiliation like those feature din the images, as a section of search filter, besides style of clothing; or color of clothing; or male / female (unisex can appear in both); if you hvaent consdiered alreayd. whenever someone adds an item to the cart, hvae the dog jump up excitedly. and when a user checks out, have the dog cartwheel across the screen with a dog bone biscuit in its mouth. hope this is imaginative enough! push me more and give further whimsical ideas that would match the aestheitc and tone and the text we've established, if you hvae anything else to add. again - we want to dazzle!! and close a bunhc of shopping deals!
+>
+> *(images: The Art of Trader Joe's cover; blue toile wallpaper; shields of Yale's 13 graduate and professional schools and 12 residential colleges; cartoon bulldog in a Y sweater; bulldog puppy in front of a Yale Y)*
+
+**Follow-up (my answers to Claude's questions, as selected and typed):**
+
+> Checkout: Reserve for pickup (Recommended). Fit filter: Infer it, unisex in both (Recommended). Extras: Dan's Picks notes, Gift wrap and note, plus: "For Dan's Picks notes, call him "Handsome Dan" as his nickname goes, and hvae a byline or somehwere saying something to look as handsome as Dan, or that Handsome Dan would know a thing or two about handsome / style etc." Mascot name: Handsome Dan (Recommended).
+
+**What was lacking before:** The site had no cart or checkout for the bulldog to celebrate, no data for school or men's/women's filters, and no decision on how a payment-free shop should "check out", so those choices had to be made first.

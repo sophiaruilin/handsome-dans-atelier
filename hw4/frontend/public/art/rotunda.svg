@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 200" width="210" height="200"><defs>
+  <pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <line x1="0" y1="0" x2="0" y2="5" stroke="#00356b" stroke-width="1"/>
+  </pattern>
+  <pattern id="hatch-fine" width="3.4" height="3.4" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
+    <line x1="0" y1="0" x2="0" y2="3.4" stroke="#00356b" stroke-width="0.7"/>
+  </pattern>
+  <pattern id="cross" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <path d="M0 0V5M0 0H5" stroke="#00356b" stroke-width="0.8"/>
+  </pattern>
+</defs><g fill="none" stroke="#00356b" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="1.0" fill-opacity="1.0"><rect x="22" y="120" width="166" height="68"/><path d="M16 120H194M16 114H194L194 120M16 114V120"/><path d="M32 124V184M36 124V184" stroke-width="0.8"/><path d="M48 124V184M52 124V184" stroke-width="0.8"/><path d="M64 124V184M68 124V184" stroke-width="0.8"/><path d="M80 124V184M84 124V184" stroke-width="0.8"/><path d="M96 124V184M100 124V184" stroke-width="0.8"/><path d="M112 124V184M116 124V184" stroke-width="0.8"/><path d="M128 124V184M132 124V184" stroke-width="0.8"/><path d="M144 124V184M148 124V184" stroke-width="0.8"/><path d="M160 124V184M164 124V184" stroke-width="0.8"/><path d="M176 124V184M180 124V184" stroke-width="0.8"/><path d="M14 188H196" stroke-width="1.4"/><rect x="56" y="84" width="98" height="30"/><rect x="64" y="90" width="7" height="18" stroke-width="0.6"/><rect x="78" y="90" width="7" height="18" stroke-width="0.6"/><rect x="92" y="90" width="7" height="18" stroke-width="0.6"/><rect x="106" y="90" width="7" height="18" stroke-width="0.6"/><rect x="120" y="90" width="7" height="18" stroke-width="0.6"/><rect x="134" y="90" width="7" height="18" stroke-width="0.6"/><rect x="148" y="90" width="7" height="18" stroke-width="0.6"/><path d="M50 84Q50 30 105 26Q160 30 160 84Z" fill="url(#hatch-fine)"/><path d="M85 27Q73.0 50 63.0 84" stroke-width="0.6"/><path d="M97 27Q92.2 50 88.2 84" stroke-width="0.6"/><path d="M113 27Q117.8 50 121.8 84" stroke-width="0.6"/><path d="M125 27Q137.0 50 147.0 84" stroke-width="0.6"/><rect x="97" y="10" width="16" height="16"/><path d="M95 10H115L105 2Z"/></g></svg>

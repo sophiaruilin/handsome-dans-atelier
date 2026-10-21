@@ -13,6 +13,7 @@ from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
 
+import catalog_meta
 from models import (
     CatalogueOverview,
     CustomerProfile,
@@ -74,6 +75,8 @@ def load_products(product_id: str | None = None) -> list[Product]:
             key=lambda s: SIZE_ORDER.index(s.size) if s.size in SIZE_ORDER else len(SIZE_ORDER),
         )
         total = sum(s.quantity for s in sizes)
+        tags = json.loads(r["search_tags"])
+        aff = catalog_meta.affiliation(r["product_id"], r["name"], tags)
         products.append(
             Product(
                 product_id=r["product_id"],
@@ -81,12 +84,16 @@ def load_products(product_id: str | None = None) -> list[Product]:
                 garment_type=r["garment_type"],
                 description=r["description"],
                 colors=json.loads(r["colors"]),
-                search_tags=json.loads(r["search_tags"]),
+                search_tags=tags,
                 image_url="/media/" + r["image_file_path"],
                 price=r["price"],
                 total_stock=total,
                 stock_status=style_status(total),
                 inventory=sizes,
+                affiliation_group=aff[0] if aff else None,
+                affiliation=aff[1] if aff else None,
+                fit=catalog_meta.fit(r["name"], tags),
+                dan_note=catalog_meta.dan_note(r["product_id"]),
             )
         )
     return products
@@ -242,6 +249,8 @@ def summary(p: Product) -> ProductSummary:
         colors=p.colors,
         stock_status=p.stock_status,
         sizes_in_stock=[s.size for s in p.inventory if s.quantity > 0],
+        affiliation=p.affiliation,
+        dan_pick=p.dan_note is not None,
     )
 
 
@@ -254,6 +263,8 @@ def product_info(p: Product) -> ProductInfo:
         price=p.price,
         colors=p.colors,
         stock_status=p.stock_status,
+        affiliation=p.affiliation,
+        dan_note=p.dan_note,
         total_stock=p.total_stock,
         sizes=[
             SizeAvailability(size=s.size, quantity=s.quantity, status=s.status, in_stock=s.quantity > 0)
@@ -306,7 +317,15 @@ def my_account(customer: CustomerProfile) -> MyAccount:
             ).fetchall()
         names = {p.product_id: p.name for p in get_products([r[0] for r in rows])}
         waitlist = [f"{names.get(pid, pid)}{f' (size {size})' if size else ''}" for pid, size in rows]
+    import orders  # local import: orders imports tools
+
+    reservations = [
+        f"{o.order_number} ({o.created_at[:10]}, pick up by {o.pickup_by}): "
+        + ", ".join(f"{i.quantity}x {i.name} ({i.size})" for i in o.items)
+        for o in orders.orders_for_user(customer.user_id, limit=5)
+    ]
     return MyAccount(
+        orders=reservations,
         first_name=customer.first_name,
         last_name=customer.last_name,
         email=customer.email,

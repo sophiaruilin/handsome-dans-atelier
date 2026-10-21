@@ -1,4 +1,4 @@
-import type { ChatMessage, PageContext, PageResults, Product, User } from './types'
+import type { ChatMessage, Order, PageContext, PageResults, Product, User } from './types'
 
 // Relative URLs: Vite proxies /api and /media to the FastAPI back end (see vite.config.ts).
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -76,5 +76,14 @@ export interface SignupForm {
 export const signup = (form: SignupForm) => request<User>('/api/auth/signup', postJson(form))
 
 export const logout = () => request<void>('/api/auth/logout', { method: 'POST' })
+
+// Reserve the bag for pickup at 57 Broadway (no payment online). Prices are re-read on the server.
+export const reserveOrder = (body: {
+  items: { product_id: string; size: string; quantity: number }[]
+  name: string
+  email: string
+  gift_wrap: boolean
+  gift_note: string
+}) => request<Order>('/api/orders', postJson(body))
 
 export const formatPrice = (price: number) => `$${price.toFixed(2)}`

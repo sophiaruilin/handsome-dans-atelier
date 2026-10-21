@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { formatPrice, getProduct, getSimilar } from '../api'
+import { useBag } from '../cart/context'
 import { askChat } from '../chat/askChat'
+import Dan from '../components/Dan'
+import { toast } from '../dan/toast'
 import ColorSwatches from '../components/ColorSwatches'
 import FavoriteButton from '../components/FavoriteButton'
 import ProductStrip from '../components/ProductStrip'
@@ -18,6 +21,8 @@ export default function ProductDetail() {
   const [loaded, setLoaded] = useState<{ id: string; product?: Product; error?: string } | null>(null)
   const [similar, setSimilar] = useState<{ id: string; products: Product[] } | null>(null)
   const [choice, setChoice] = useState<{ id: string; size: string } | null>(null)
+  const [qty, setQty] = useState(1)
+  const bag = useBag()
   const { products: recentProducts } = useProductsById(recent.filter((id) => id !== productId).slice(0, 6))
 
   useEffect(() => {
@@ -40,6 +45,7 @@ export default function ProductDetail() {
   const setSelected = (size: string) => {
     setChoice({ id: productId, size })
     setMySize(size)
+    setQty(1)
   }
 
   if (error) {
@@ -53,6 +59,23 @@ export default function ProductDetail() {
   if (!product) return <section className="page muted">Loading…</section>
 
   const size = product.inventory.find((s) => s.size === selected)
+  const inBag = size ? (bag.items.find((i) => i.product_id === product.product_id && i.size === size.size)?.quantity ?? 0) : 0
+  const canAdd = !!size && size.quantity > inBag
+
+  function addToBag() {
+    if (!product || !size || !canAdd) return
+    const quantity = Math.min(qty, size.quantity - inBag)
+    bag.add({
+      product_id: product.product_id,
+      size: size.size,
+      quantity,
+      name: product.name,
+      price: product.price,
+      image_url: product.image_url,
+      max: size.quantity,
+    })
+    toast(`Added ${quantity} × ${product.name} (${size.size}) to your bag. Handsome Dan approves!`)
+  }
 
   return (
     <section className="page">
@@ -72,6 +95,16 @@ export default function ProductDetail() {
             <StockBadge status={product.stock_status} />
           </div>
           <p>{product.description}</p>
+          {product.dan_note && (
+            <aside className="dan-note">
+              <Dan size={64} />
+              <div>
+                <p className="dan-note-label">Handsome Dan's Pick</p>
+                <p className="handwritten">“{product.dan_note}”</p>
+                <p className="dan-note-sign">— H.D. 🐾 · knows a thing or two about looking handsome</p>
+              </div>
+            </aside>
+          )}
 
           <h2>Colors</h2>
           <ColorSwatches colors={product.colors} showNames />
@@ -110,6 +143,28 @@ export default function ProductDetail() {
           )}
           {!size && <p className="muted">Pick a size to check availability.</p>}
           {product.stock_status === 'sold_out' && !size && <WaitlistForm productId={product.product_id} />}
+
+          {size && size.quantity > 0 && (
+            <div className="add-to-bag">
+              <div className="stepper" aria-label="Quantity">
+                <button onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={qty <= 1}>
+                  −
+                </button>
+                <span>{qty}</span>
+                <button onClick={() => setQty((q) => Math.min(size.quantity - inBag, q + 1))} disabled={qty >= size.quantity - inBag}>
+                  +
+                </button>
+              </div>
+              <button className="btn btn-brass btn-big" onClick={addToBag} disabled={!canAdd}>
+                {canAdd ? `Add to bag · ${formatPrice(product.price * qty)}` : 'All of this size is in your bag'}
+              </button>
+            </div>
+          )}
+          {inBag > 0 && (
+            <p className="muted in-bag">
+              {inBag} in your bag · <Link to="/bag">Reserve for pickup →</Link>
+            </p>
+          )}
 
           <div className="detail-actions">
             <FavoriteButton productId={product.product_id} label />

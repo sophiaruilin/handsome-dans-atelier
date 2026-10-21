@@ -4,7 +4,9 @@ import { BrowserRouter } from 'react-router-dom'
 import AuthProvider from './auth/AuthProvider.tsx'
 import ChatResultsProvider from './chat/ChatResultsProvider.tsx'
 import ShopperPrefsProvider from './prefs/ShopperPrefsProvider.tsx'
+import BagProvider from './cart/BagProvider.tsx'
 import './index.css'
+import './theme.css'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
@@ -13,7 +15,9 @@ createRoot(document.getElementById('root')!).render(
       <AuthProvider>
         <ChatResultsProvider>
           <ShopperPrefsProvider>
-            <App />
+            <BagProvider>
+              <App />
+            </BagProvider>
           </ShopperPrefsProvider>
         </ChatResultsProvider>
       </AuthProvider>

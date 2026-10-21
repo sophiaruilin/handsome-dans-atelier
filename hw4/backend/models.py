@@ -35,6 +35,11 @@ class Product(BaseModel):
     total_stock: int
     stock_status: StockStatus
     inventory: list[SizeStock]
+    # Derived in catalog_meta.py (Problem 10 filters and Handsome Dan's Picks).
+    affiliation_group: str | None = None  # college | school | team | family
+    affiliation: str | None = None  # e.g. "Saybrook", "School of Medicine", "Ice Hockey", "Mom"
+    fit: str = "unisex"  # mens | womens | unisex
+    dan_note: str | None = None  # set for Handsome Dan's Picks
 
 
 # --- Agent tool results ----------------------------------------------------------------------
@@ -58,6 +63,8 @@ class ProductInfo(BaseModel):
     price: float = Field(description="Price in US dollars, from the catalogue table")
     colors: list[str]
     stock_status: StockStatus = Field(description="Overall status across all sizes")
+    affiliation: str | None = Field(default=None, description="College, school, team or family member it's for")
+    dan_note: str | None = Field(default=None, description="Set if it's one of Handsome Dan's Picks: his note")
     total_stock: int
     sizes: list[SizeAvailability]
     sizes_in_stock: list[str]
@@ -89,6 +96,8 @@ class ProductSummary(BaseModel):
     colors: list[str]
     stock_status: StockStatus
     sizes_in_stock: list[str]
+    affiliation: str | None = None
+    dan_pick: bool = False
 
 
 class ProductSearchResult(BaseModel):
@@ -105,6 +114,44 @@ class CatalogueOverview(BaseModel):
     sizes: list[str]
     price_min: float
     price_max: float
+
+
+# --- Orders: reserve for pickup (Problem 10) ---------------------------------------------------
+
+class OrderItemIn(BaseModel):
+    product_id: str = Field(max_length=200)
+    size: str = Field(max_length=10)
+    quantity: int = Field(ge=1, le=10)
+
+
+class OrderRequest(BaseModel):
+    items: list[OrderItemIn] = Field(min_length=1, max_length=20)
+    name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    gift_wrap: bool = False
+    gift_note: str = Field(default="", max_length=240)
+
+
+class OrderItem(BaseModel):
+    product_id: str
+    name: str
+    size: str
+    quantity: int
+    unit_price: float  # from the catalogue at reservation time, never from the browser
+    image_url: str
+
+
+class Order(BaseModel):
+    order_number: str
+    name: str
+    email: str
+    status: str
+    items: list[OrderItem]
+    subtotal: float
+    gift_wrap: bool
+    gift_note: str
+    created_at: str
+    pickup_by: str  # reservations are held for 3 days at 57 Broadway
 
 
 class WaitlistRequest(BaseModel):
@@ -181,6 +228,7 @@ class MyAccount(BaseModel):
     member_since: str
     saved_messages: int = Field(description="Messages in their saved chat history")
     waitlist: list[str] = Field(description="Products (and sizes) they asked to be emailed about")
+    orders: list[str] = Field(default_factory=list, description="Their pickup reservations, most recent first")
 
 
 class ShopReply(BaseModel):

@@ -18,6 +18,10 @@ export interface Product {
   total_stock: number
   stock_status: StockStatus
   inventory: SizeStock[]
+  affiliation_group: 'college' | 'school' | 'team' | 'family' | null
+  affiliation: string | null
+  fit: 'mens' | 'womens' | 'unisex'
+  dan_note: string | null // set for Handsome Dan's Picks
 }
 
 export interface ChatMessage {
@@ -59,4 +63,26 @@ export interface PageContext {
   path: string
   product_id: string | null
   results_title: string | null
+}
+
+export interface OrderItem {
+  product_id: string
+  name: string
+  size: string
+  quantity: number
+  unit_price: number
+  image_url: string
+}
+
+export interface Order {
+  order_number: string
+  name: string
+  email: string
+  status: string
+  items: OrderItem[]
+  subtotal: number
+  gift_wrap: boolean
+  gift_note: string
+  created_at: string
+  pickup_by: string
 }

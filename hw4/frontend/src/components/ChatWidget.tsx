@@ -6,11 +6,13 @@ import { useAuth } from '../auth/context'
 import { onAskChat } from '../chat/askChat'
 import { useChatResults } from '../chat/context'
 import type { ChatMessage, PageContext, PageResults, Product } from '../types'
+import { useDanJump } from '../dan/useDanJump'
+import Dan from './Dan'
 import StockBadge from './StockBadge'
 
 const greeting = (firstName?: string): ChatMessage => ({
   role: 'assistant',
-  content: `Hi${firstName ? `, ${firstName}` : ''}! I'm the Campus Customs shop assistant. Ask me about sizes, colors or gift ideas.`,
+  content: `Woof${firstName ? `, ${firstName}` : ''}! I'm **Handsome Dan**, Campus Customs' resident bulldog and style consultant. Ask me about sizes, colors, gifts, or what to wear to The Game.`,
 })
 
 // One-tap conversation starters for the page the shopper is on.
@@ -49,6 +51,7 @@ export default function ChatWidget() {
   const chatResults = useChatResults()
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const jumping = useDanJump()
 
   // Put a search on the Products page (the cards there open the single-item page as usual).
   function showOnPage(results: PageResults) {
@@ -141,9 +144,14 @@ export default function ChatWidget() {
       {open && (
         <section className="chat-panel" aria-label="Shop assistant chat">
           <header>
-            <div>
-              <strong>Shop assistant</strong>
-              <small>{user ? '💾 Chat saved to your account' : 'Guest chat · log in to save it'}</small>
+            <div className="chat-who">
+              <span className={`chat-avatar ${jumping ? 'jumping' : ''}`}>
+                <Dan size={42} />
+              </span>
+              <div>
+                <strong>Handsome Dan</strong>
+                <small>{user ? '💾 Chat saved to your account' : 'Guest chat · log in to save it'}</small>
+              </div>
             </div>
             <div className="chat-actions">
               <button className="chat-new" onClick={newChat} disabled={sending || messages.length < 2}>
@@ -157,6 +165,11 @@ export default function ChatWidget() {
           <div className="chat-messages" ref={listRef}>
             {messages.map((m, i) => (
               <div key={i} className={`bubble ${m.role}`}>
+                {m.role === 'assistant' && (
+                  <span className="bubble-dan" aria-hidden="true">
+                    <Dan size={26} />
+                  </span>
+                )}
                 {m.role === 'assistant' ? <Markdown>{m.content}</Markdown> : m.content}
                 {m.pageResults && (
                   <button type="button" className="on-page-note" onClick={() => showOnPage(m.pageResults!)}>
@@ -174,10 +187,10 @@ export default function ChatWidget() {
               </div>
             ))}
             {sending && (
-              <div className="bubble assistant typing" aria-label="Assistant is typing">
-                <span />
-                <span />
-                <span />
+              <div className="bubble assistant typing" aria-label="Handsome Dan is typing">
+                <span>🐾</span>
+                <span>🐾</span>
+                <span>🐾</span>
               </div>
             )}
             {quickReplies.length > 0 && (
@@ -195,7 +208,7 @@ export default function ChatWidget() {
               ref={inputRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder={productId ? 'Ask about this item…' : 'Ask about sizes, colors, gifts…'}
+              placeholder={productId ? 'Ask Dan about this item…' : 'Ask Handsome Dan anything…'}
               aria-label="Message"
               maxLength={2000}
               autoFocus
@@ -206,9 +219,14 @@ export default function ChatWidget() {
           </form>
         </section>
       )}
-      <button className="chat-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        {open ? '×' : '💬'}
-        <span className="sr-only">{open ? 'Close chat' : 'Open chat'}</span>
+      <button
+        className={`chat-toggle ${open ? 'open' : ''} ${jumping ? 'jumping' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
+        {open ? <span className="chat-x">×</span> : <Dan size={58} />}
+        {!open && <span className="chat-toggle-label">Ask Handsome Dan</span>}
+        <span className="sr-only">{open ? 'Close chat' : 'Chat with Handsome Dan'}</span>
       </button>
     </div>
   )

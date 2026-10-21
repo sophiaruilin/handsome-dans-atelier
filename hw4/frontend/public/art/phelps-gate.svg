@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 240" width="170" height="240"><defs>
+  <pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <line x1="0" y1="0" x2="0" y2="5" stroke="#00356b" stroke-width="1"/>
+  </pattern>
+  <pattern id="hatch-fine" width="3.4" height="3.4" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
+    <line x1="0" y1="0" x2="0" y2="3.4" stroke="#00356b" stroke-width="0.7"/>
+  </pattern>
+  <pattern id="cross" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <path d="M0 0V5M0 0H5" stroke="#00356b" stroke-width="0.8"/>
+  </pattern>
+</defs><g fill="none" stroke="#00356b" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="1.0" fill-opacity="1.0"><rect x="30" y="60" width="110" height="170"/><rect x="110" y="60" width="30" height="170" fill="url(#hatch)" stroke="none"/><path d="M58 230 V179.7 A45.9 45.9 0 0 1 85.0 150 A45.9 45.9 0 0 1 112 179.7 V230 Z" fill="url(#cross)"/><path d="M66 230 V180.9 A32.3 32.3 0 0 1 85.0 160 A32.3 32.3 0 0 1 104 180.9 V230 Z" fill="none"/><path d="M26 60V53H34V60H42V53H50V60H58V53H66V60H74V53H82V60H90V53H98V60H106V53H114V60H122V53H130V60H138V53H144V60"/><rect x="70" y="84" width="30" height="40"/><path d="M76 120 V94.4 A6.8 6.8 0 0 1 80.0 90 A6.8 6.8 0 0 1 84 94.4 V120 Z" fill="url(#hatch-fine)"/><path d="M86 120 V94.4 A6.8 6.8 0 0 1 90.0 90 A6.8 6.8 0 0 1 94 94.4 V120 Z" fill="url(#hatch-fine)"/><path d="M30 140H140" stroke-width="0.6"/><path d="M85 53V8"/><path d="M85 9L118 16L85 24Z" fill="#fff"/><text x="96" y="21" font-family="Georgia,serif" font-size="9" font-weight="700" fill="#00356b" stroke="none">Y</text><path d="M18 230H152" stroke-width="1.4"/></g></svg>

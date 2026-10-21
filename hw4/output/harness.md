@@ -502,3 +502,16 @@ See **`output/usability.md`**: 4 front-end and 4 agent/back-end improvements, wi
 - **Usage log:** one JSON line per chat turn in `backend/logs/chat_usage.jsonl` (git-ignored, no message text).
 - **New endpoint:** `GET /api/products/{id}/similar`, shared with the agent tool.
 - **Tests:** 31 in `backend/tests/`.
+
+## Problem 10 — Style the website
+
+See **`output/design.md`** for the full design write-up, with screenshots in `output/screenshots/p10/`. Harness-relevant changes:
+
+- **`backend/catalog_meta.py`** (new): derives each product's `affiliation` (college, school, team or family), `fit` (mens, womens or unisex) and Handsome Dan's Picks notes. These are added to `Product`, `ProductInfo` and `ProductSummary`, so the filters and the agent both see them.
+- **`backend/orders.py`** (new), with **`POST /api/orders`** and **`GET /api/orders/mine`**: reserve-for-pickup orders.
+  - Prices come from the catalogue, and stock is held inside one locked transaction (`BEGIN IMMEDIATE`).
+  - New `orders` and `order_items` tables are created on first use.
+  - `get_my_account` now lists the shopper's reservations.
+- **`prompts/prompt.md`:** the agent speaks as **Handsome Dan**, knows his Picks and affiliations, and explains Add to bag → Bag → Reserve for pickup. Payments are still never taken in chat.
+- **Front end:** a theme layer (`src/theme.css`), Dan's SVG (`components/Dan.tsx`), a Dan event bus for the jump and cartwheel (`src/dan/`), the bag (`src/cart/`), and the generated art (`scripts/build_art.py` → `public/art/`).
+- **Tests:** 37 (6 new in `tests/test_storefront.py`; order tests run on a temporary copy of the database).

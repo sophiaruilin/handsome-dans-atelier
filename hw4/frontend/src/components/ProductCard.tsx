@@ -23,6 +23,11 @@ export default function ProductCard({ product, mySize }: Props) {
       <Link to={href} className="card-link">
         <div className="card-image">
           <img src={product.image_url} alt={product.name} loading="lazy" />
+          {product.dan_note && (
+            <span className="dan-ribbon" title="Handsome Dan's Pick">
+              🐾 Dan's Pick
+            </span>
+          )}
           {inMySize && (
             <span className={`my-size-badge ${inMySize.status}`}>
               {inMySize.quantity === 0 ? `${mySize} sold out` : `${mySize}: ${inMySize.quantity} left`}
@@ -30,11 +35,11 @@ export default function ProductCard({ product, mySize }: Props) {
           )}
         </div>
         <div className="card-body">
-          <p className="eyebrow">{product.garment_type}</p>
+          <p className="eyebrow">{product.affiliation ?? product.garment_type}</p>
           <h3>{product.name}</h3>
           <p className="card-desc">{shortDescription(product.description)}</p>
           <div className="card-meta">
-            <span className="price">{formatPrice(product.price)}</span>
+            <span className="price tag">{formatPrice(product.price)}</span>
             <StockBadge status={product.stock_status} />
           </div>
           <ColorSwatches colors={product.colors} />

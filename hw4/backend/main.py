@@ -23,6 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UsageLimitExceeded
 
 import auth
+import orders
 import tools
 from agent import run_agent
 from models import (
@@ -32,6 +33,8 @@ from models import (
     ChatResponse,
     CustomerProfile,
     LoginRequest,
+    Order,
+    OrderRequest,
     Product,
     SignupRequest,
     User,
@@ -267,6 +270,26 @@ def clear_chat_history(cc_session: str | None = Cookie(default=None)):
         if not user:
             raise HTTPException(401, "Log in to manage your chat history.")
         conn.execute("DELETE FROM chat_messages WHERE user_id = ?", (user.id,))
+
+
+# --- Orders: reserve for pickup -----------------------------------------------------------------
+
+@app.post("/api/orders", response_model=Order, status_code=201)
+def reserve(body: OrderRequest, cc_session: str | None = Cookie(default=None)):
+    """Turn the bag into a pickup reservation. Stock is held; no payment is taken online."""
+    with users_db() as conn:
+        user = current_user(conn, cc_session)
+    try:
+        return orders.create_order(body, user.id if user else None)
+    except orders.OrderError as e:
+        raise HTTPException(409, str(e))
+
+
+@app.get("/api/orders/mine", response_model=list[Order])
+def my_orders(cc_session: str | None = Cookie(default=None)):
+    with users_db() as conn:
+        user = current_user(conn, cc_session)
+    return orders.orders_for_user(user.id) if user else []
 
 
 # --- Waitlist ------------------------------------------------------------------------------

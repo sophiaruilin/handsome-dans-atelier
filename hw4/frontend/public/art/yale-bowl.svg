@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 120" width="250" height="120"><defs>
+  <pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <line x1="0" y1="0" x2="0" y2="5" stroke="#00356b" stroke-width="1"/>
+  </pattern>
+  <pattern id="hatch-fine" width="3.4" height="3.4" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
+    <line x1="0" y1="0" x2="0" y2="3.4" stroke="#00356b" stroke-width="0.7"/>
+  </pattern>
+  <pattern id="cross" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <path d="M0 0V5M0 0H5" stroke="#00356b" stroke-width="0.8"/>
+  </pattern>
+</defs><g fill="none" stroke="#00356b" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="1.0" fill-opacity="1.0"><ellipse cx="125" cy="62" rx="115" ry="40"/><ellipse cx="125" cy="58" rx="92" ry="28" fill="url(#hatch-fine)"/><ellipse cx="125" cy="56" rx="60" ry="15" fill="#fffdf7"/><path d="M85 56H165M125 42V70" stroke-width="0.6"/><path d="M16.9 86.0V79.0A4 4 0 0 1 24.9 79.0V86.0" stroke-width="0.8"/><path d="M27.1 92.7V85.7A4 4 0 0 1 35.1 85.7V92.7" stroke-width="0.8"/><path d="M41.0 98.6V91.6A4 4 0 0 1 49.0 91.6V98.6" stroke-width="0.8"/><path d="M58.0 103.4V96.4A4 4 0 0 1 66.0 96.4V103.4" stroke-width="0.8"/><path d="M77.6 107.0V100.0A4 4 0 0 1 85.6 100.0V107.0" stroke-width="0.8"/><path d="M98.9 109.3V102.3A4 4 0 0 1 106.9 102.3V109.3" stroke-width="0.8"/><path d="M121.0 110.0V103.0A4 4 0 0 1 129.0 103.0V110.0" stroke-width="0.8"/><path d="M143.1 109.3V102.3A4 4 0 0 1 151.1 102.3V109.3" stroke-width="0.8"/><path d="M164.4 107.0V100.0A4 4 0 0 1 172.4 100.0V107.0" stroke-width="0.8"/><path d="M184.0 103.4V96.4A4 4 0 0 1 192.0 96.4V103.4" stroke-width="0.8"/><path d="M201.0 98.6V91.6A4 4 0 0 1 209.0 91.6V98.6" stroke-width="0.8"/><path d="M214.9 92.7V85.7A4 4 0 0 1 222.9 85.7V92.7" stroke-width="0.8"/><path d="M225.1 86.0V79.0A4 4 0 0 1 233.1 79.0V86.0" stroke-width="0.8"/><path d="M10 70V92Q125 128 240 92V70" /><path d="M6 112H244" stroke-width="1.4"/></g></svg>

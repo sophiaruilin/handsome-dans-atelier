@@ -1,0 +1,372 @@
+/* =====================================================================================
+   Campus Customs storefront theme (Problem 10)
+   Yale Club / New Haven Lawn Club: navy, cream and brass, engraved frames, awning stripes.
+   Trader Joe's: pastel tiles of Victorian engravings. Handsome Dan: the dapper bulldog.
+   ===================================================================================== */
+
+:root {
+  --yale-blue: #00356b;
+  --yale-blue-dark: #00244a;
+  --yale-blue-light: #286dc0;
+  --cream: #f4eedf;
+  --ivory: #fffdf7;
+  --paper: #fffaf0;
+  --brass: #b08d57;
+  --brass-dark: #8c6c3c;
+  --brass-light: #dcc8a0;
+  --ink: #1d2433;
+  --muted: #5d6675;
+  --line: #e4dccb;
+  --serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --fell: 'IM Fell English SC', Georgia, serif;
+  --hand: 'Caveat', 'Segoe Print', cursive;
+  --sans: 'Libre Franklin', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --frame: 0 0 0 1px var(--brass-light), 0 0 0 5px var(--ivory), 0 0 0 6px var(--brass-light);
+  --shadow: 0 2px 12px rgb(29 36 51 / 0.08);
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--cream);
+}
+
+/* Toile wallpaper of campus landmarks, softened with a cream wash so content stays readable. */
+body {
+  background-color: var(--cream);
+  background-image: linear-gradient(rgb(244 238 223 / 0.8), rgb(244 238 223 / 0.8)), url('/art/toile.svg');
+  background-size: auto, 900px 900px;
+  background-attachment: fixed;
+}
+
+h1, h2, h3 { font-family: var(--serif); color: var(--yale-blue); letter-spacing: -0.01em; }
+h1 { font-weight: 900; }
+.eyebrow { font-family: var(--fell); text-transform: none; letter-spacing: 0.06em; font-size: 0.95rem; color: var(--brass-dark); font-weight: 400; }
+.handwritten { font-family: var(--hand); font-size: 1.45rem; line-height: 1.25; color: var(--yale-blue); margin: 0; }
+.muted { color: var(--muted); }
+a { color: var(--yale-blue-light); }
+:focus-visible { outline: 3px solid var(--brass); outline-offset: 2px; }
+
+/* ---------- Buttons ---------- */
+.btn { font-family: var(--sans); letter-spacing: 0.02em; box-shadow: 0 2px 0 var(--yale-blue-dark); }
+.btn-big { padding: 0.85rem 1.6rem; font-size: 1.02rem; }
+.btn-brass {
+  background: linear-gradient(180deg, #c9a66b, var(--brass)); color: #1b1408; box-shadow: 0 2px 0 var(--brass-dark);
+  border: 1px solid var(--brass-dark);
+}
+.btn-brass:hover { background: linear-gradient(180deg, #d4b47c, #a5814a); }
+.btn-outline { background: var(--ivory); color: var(--yale-blue); border: 1.5px solid var(--yale-blue); box-shadow: none; }
+.btn-outline:hover { background: #eaf0f8; }
+.link-button { background: none; border: 0; padding: 0; color: var(--yale-blue-light); text-decoration: underline; cursor: pointer; font: inherit; font-size: 0.9rem; }
+
+/* ---------- Masthead: title, then Handsome Dan as the logo ---------- */
+.masthead { background: var(--ivory); text-align: center; border-bottom: 3px double var(--brass); position: relative; }
+.masthead-strip {
+  margin: 0; padding: 0.35rem 1rem; background: var(--yale-blue); color: #e9dfc6;
+  font-family: var(--fell); font-size: 0.85rem; letter-spacing: 0.05em;
+}
+.masthead-strip span { color: var(--brass); margin: 0 0.4rem; }
+.masthead-title { display: inline-flex; align-items: center; gap: 1.1rem; text-decoration: none; padding: 1rem 1rem 0.2rem; }
+.masthead-title > span:not(.ornament) { display: flex; flex-direction: column; align-items: center; }
+.wordmark { font-family: var(--serif); font-weight: 900; font-size: clamp(2.4rem, 6vw, 4rem); color: var(--yale-blue); line-height: 1; letter-spacing: -0.01em; }
+.subtitle { font-family: var(--fell); color: var(--brass-dark); font-size: 1.05rem; letter-spacing: 0.06em; margin-top: 0.35rem; }
+.ornament { font-size: 2rem; color: var(--brass); }
+.ornament.flip { transform: scaleX(-1); display: inline-block; }
+.masthead-dan { display: inline-flex; flex-direction: column; align-items: center; text-decoration: none; padding-bottom: 0.4rem; position: relative; }
+.masthead-dan svg { transform-origin: 50% 100%; transition: transform 0.2s; }
+.masthead-dan:hover svg { transform: rotate(-4deg) scale(1.04); }
+.dan-caption { font-family: var(--hand); font-size: 1.35rem; color: var(--yale-blue); margin-top: -0.2rem; }
+
+/* Dan jumps for joy when something goes in the bag */
+.jumping svg { animation: dan-jump 1s cubic-bezier(0.3, 0.7, 0.4, 1) both; }
+@keyframes dan-jump {
+  0% { transform: translateY(0) scale(1, 1); }
+  12% { transform: translateY(0) scale(1.12, 0.86); }
+  38% { transform: translateY(-46px) scale(0.94, 1.08) rotate(-8deg); }
+  55% { transform: translateY(-50px) scale(0.96, 1.06) rotate(8deg); }
+  78% { transform: translateY(0) scale(1.1, 0.88); }
+  90% { transform: translateY(-8px) scale(0.98, 1.02); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+.woof {
+  position: absolute; top: 0.6rem; left: calc(50% + 44px); font-family: var(--hand); font-size: 1.5rem; color: var(--brass-dark);
+  background: var(--ivory); border: 1.5px solid var(--brass); border-radius: 14px 14px 14px 2px; padding: 0 0.55rem;
+  animation: woof 1s ease both;
+}
+@keyframes woof { 0% { opacity: 0; transform: scale(0.4) translateY(10px); } 30%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-8px); } }
+
+/* ---------- Navigation bar + awning stripe ---------- */
+.navbar {
+  position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.55rem clamp(1rem, 4vw, 3rem); background: var(--yale-blue); border-top: 1px solid var(--brass); border-bottom: 1px solid var(--brass);
+}
+.navbar .nav-links, .navbar .nav-account { display: flex; align-items: center; gap: 1.3rem; }
+.navbar a { color: #e6edf6; text-decoration: none; font-family: var(--fell); font-size: 1.12rem; letter-spacing: 0.04em; border-bottom: 2px solid transparent; padding: 0.15rem 0; }
+.navbar a:hover { color: #fff; }
+.navbar a.active { color: #fff; border-bottom-color: var(--brass); }
+.navbar .btn-nav { background: var(--ivory); color: var(--yale-blue); font-family: var(--sans); font-size: 0.85rem; border: 0; box-shadow: none; padding: 0.4rem 0.9rem; }
+.navbar a.btn-nav { border-bottom: 0; }
+.nav-icon { display: inline-flex; align-items: center; gap: 0.35rem; }
+.nav-icon .badge { background: var(--brass); color: #1b1408; border-radius: 999px; font-family: var(--sans); font-size: 0.72rem; font-weight: 700; padding: 0 0.45rem; line-height: 1.45; }
+.nav-icon.bump { animation: bump 0.6s ease; }
+@keyframes bump { 30% { transform: scale(1.25) rotate(-6deg); } 60% { transform: scale(0.95); } }
+.greeting { color: #fff; font-family: var(--hand); font-size: 1.3rem; }
+.awning {
+  height: 16px;
+  background:
+    radial-gradient(circle at 12px -4px, transparent 12px, var(--cream) 12.5px) 0 4px / 24px 12px repeat-x,
+    repeating-linear-gradient(90deg, var(--yale-blue) 0 12px, var(--ivory) 12px 24px);
+  position: sticky; top: 54px; z-index: 29; opacity: 0.95;
+}
+
+/* ---------- Page scaffolding ---------- */
+.page-head h1 { font-size: clamp(2rem, 4vw, 2.9rem); margin-bottom: 0.3rem; }
+.page-head { margin-bottom: 1.2rem; }
+
+/* ---------- Home hero: Trader Joe's pastel engraving tiles ---------- */
+.hero-tiles {
+  max-width: 1200px; margin: 1.5rem auto 0; padding: 0 clamp(1rem, 4vw, 3rem);
+  display: grid; gap: 14px;
+  grid-template-columns: 1fr 1.25fr 1.25fr 1fr;
+  grid-template-rows: 170px 170px 170px 150px;
+  grid-template-areas:
+    't0 t1 t2 t3'
+    't0 c  c  t3'
+    't4 c  c  t5'
+    't6 t6 t7 t7';
+}
+.tile { margin: 0; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.7rem; position: relative; overflow: hidden; transition: transform 0.25s, box-shadow 0.25s; }
+.tile img { max-height: 78%; max-width: 88%; object-fit: contain; filter: drop-shadow(0 1px 0 rgb(255 255 255 / 0.6)); }
+.tile figcaption { font-family: var(--fell); font-size: 0.82rem; color: var(--yale-blue); margin-top: 0.3rem; opacity: 0.85; }
+.tile:hover { transform: rotate(-1.2deg) scale(1.02); box-shadow: 0 8px 22px rgb(0 0 0 / 0.12); }
+.tile.powder { background: #cfe3f3; } .tile.butter { background: #f6eeb4; } .tile.blush { background: #f6d6d9; }
+.tile.sage { background: #dbe8cf; } .tile.lavender { background: #ddd5ee; } .tile.peach { background: #f8dcc4; } .tile.mint { background: #cdeae0; }
+.t0 { grid-area: t0; } .t1 { grid-area: t1; } .t2 { grid-area: t2; } .t3 { grid-area: t3; }
+.t4 { grid-area: t4; } .t5 { grid-area: t5; } .t6 { grid-area: t6; } .t7 { grid-area: t7; }
+.hero-center {
+  grid-area: c; background: var(--ivory); box-shadow: var(--frame); border-radius: 2px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; padding: 1.5rem 2rem;
+}
+.hero-center h1 { font-size: clamp(2.2rem, 4.6vw, 3.6rem); line-height: 1.02; margin: 0.4rem 0 0.7rem; }
+.hero-center h1 span { font-style: italic; font-weight: 600; color: var(--brass-dark); }
+.hero-sub { color: var(--muted); font-size: 1.05rem; max-width: 34rem; margin: 0 0 1rem; }
+.hero-actions { display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center; }
+
+/* Highlights as framed calling cards */
+.highlight { background: var(--ivory); box-shadow: var(--frame); border-top: 0; border-radius: 2px; text-align: center; }
+.highlight img { height: 70px; margin: 0 auto 0.6rem; opacity: 0.9; }
+.highlight h2 { font-size: 1.35rem; }
+
+/* Handsome Dan's Picks */
+.picks-head { display: flex; align-items: center; gap: 1.2rem; margin-bottom: 1.2rem; }
+.picks-head h2 { font-size: clamp(1.8rem, 3.5vw, 2.4rem); margin: 0.1rem 0; }
+.picks-byline { font-size: 1.5rem; }
+
+/* College shields row */
+.college-row h2 { text-align: center; font-size: 1.8rem; }
+.college-shields { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.8rem 1.2rem; }
+.college-shield { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; width: 96px; text-decoration: none; color: var(--ink); font-family: var(--fell); font-size: 0.9rem; text-align: center; transition: transform 0.2s; }
+.college-shield:hover { transform: translateY(-4px); }
+.band { background: var(--ivory); border-top: 3px double var(--brass); border-bottom: 3px double var(--brass); margin-top: 2rem; }
+.band em { font-family: var(--serif); font-size: 1.3rem; color: var(--yale-blue); }
+
+/* ---------- Product cards: framed, hang-tag prices, Dan's ribbon ---------- */
+.card { background: var(--ivory); box-shadow: var(--frame); border-radius: 2px; }
+.card:hover { box-shadow: var(--frame), 0 14px 28px rgb(29 36 51 / 0.16); transform: translateY(-4px); }
+.card-image { background: #fff; border-bottom: 1px solid var(--line); }
+.card-body h3 { font-size: 1.12rem; font-weight: 800; }
+.card-body .eyebrow { font-size: 0.85rem; }
+.price.tag {
+  position: relative; display: inline-block; padding: 0.12rem 0.7rem 0.12rem 1.15rem; background: #fff6e2; border: 1px solid var(--brass);
+  border-radius: 3px 4px 4px 3px; font-family: var(--serif); font-weight: 800; color: var(--ink);
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%);
+}
+.price.tag::before { content: ''; position: absolute; left: 7px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: var(--ivory); box-shadow: inset 0 0 0 1px var(--brass); }
+.dan-ribbon {
+  position: absolute; top: 0.7rem; left: -0.35rem; background: var(--yale-blue); color: #f3e7c9; font-family: var(--fell);
+  font-size: 0.85rem; padding: 0.2rem 0.8rem 0.2rem 0.6rem; box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 50%, 100% 100%, 0 100%); z-index: 1;
+}
+.fav { color: #b3263a; }
+
+/* ---------- Shop page: filter sidebar ---------- */
+.shop-layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 1.6rem; align-items: start; }
+.filters { background: var(--ivory); box-shadow: var(--frame); border-radius: 2px; padding: 1rem 1.1rem; position: sticky; top: 90px; max-height: calc(100vh - 110px); overflow-y: auto; }
+.filter-block { border-bottom: 1px solid var(--line); padding-bottom: 0.9rem; margin-bottom: 0.9rem; }
+.filter-block h2 { font-family: var(--fell); font-weight: 400; font-size: 1.15rem; margin: 0 0 0.5rem; color: var(--yale-blue); }
+.filter-note { font-size: 0.78rem; color: var(--muted); margin: 0.4rem 0 0; }
+.filters .chips { gap: 0.35rem; }
+.filters .chip { font-size: 0.82rem; padding: 0.3rem 0.7rem; background: #fff; }
+.chip.active { background: var(--yale-blue); border-color: var(--yale-blue); color: #fff; }
+.color-filters { display: flex; flex-direction: column; gap: 0.25rem; }
+.color-chip { display: flex; align-items: center; gap: 0.5rem; border: 1px solid transparent; background: none; border-radius: 6px; padding: 0.25rem 0.4rem; font: inherit; font-size: 0.88rem; cursor: pointer; color: var(--ink); text-align: left; }
+.color-chip:hover { background: #f3eee2; }
+.color-chip.active { border-color: var(--yale-blue); background: #eaf0f8; font-weight: 600; }
+.filters details { margin-bottom: 0.4rem; }
+.filters summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; padding: 0.3rem 0; color: var(--ink); }
+.affiliations { list-style: none; padding: 0; margin: 0.2rem 0 0.4rem; display: flex; flex-direction: column; gap: 0.1rem; }
+.affiliation { display: flex; align-items: center; gap: 0.5rem; width: 100%; border: 1px solid transparent; background: none; border-radius: 6px; padding: 0.25rem 0.4rem; font: inherit; font-size: 0.86rem; cursor: pointer; color: var(--ink); text-align: left; }
+.affiliation small { margin-left: auto; color: var(--muted); font-size: 0.75rem; }
+.affiliation:hover { background: #f3eee2; }
+.affiliation.active { background: var(--yale-blue); color: #fff; }
+.affiliation.active small { color: #dbe6f3; }
+.affiliation-dot { width: 18px; text-align: center; color: var(--brass); }
+.picks-toggle { display: flex; align-items: center; gap: 0.5rem; font-family: var(--hand); font-size: 1.3rem; color: var(--yale-blue); cursor: pointer; }
+.shop-main .toolbar { margin-bottom: 0.6rem; }
+.shop-main .search { flex: 1 1 260px; }
+.active-filters { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem; }
+.active-filter { border: 1px solid var(--yale-blue); background: #eaf0f8; color: var(--yale-blue); border-radius: 999px; padding: 0.2rem 0.7rem; font: inherit; font-size: 0.82rem; cursor: pointer; }
+.size-bar, .chat-results-head { box-shadow: var(--frame); border: 0; border-radius: 2px; background: var(--ivory); }
+
+/* ---------- Product page ---------- */
+.detail-image { background: #fff; box-shadow: var(--frame), var(--shadow); border-radius: 2px; }
+.detail-info h1 { font-size: clamp(1.9rem, 3.4vw, 2.6rem); }
+.detail-price .price { font-family: var(--serif); font-size: 1.9rem; }
+.dan-note {
+  display: flex; gap: 0.8rem; align-items: center; background: var(--paper); border: 1.5px dashed var(--brass);
+  border-radius: 6px; padding: 0.7rem 1rem; margin: 1rem 0; transform: rotate(-0.8deg); box-shadow: 2px 3px 0 rgb(176 141 87 / 0.25);
+}
+.dan-note svg { flex-shrink: 0; }
+.dan-note-label { font-family: var(--fell); color: var(--brass-dark); margin: 0; font-size: 0.95rem; }
+.dan-note-sign { font-size: 0.78rem; color: var(--muted); margin: 0.2rem 0 0; }
+.add-to-bag { display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: center; margin-top: 1rem; }
+.stepper { display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: 999px; background: #fff; overflow: hidden; }
+.stepper button { width: 2.2rem; height: 2.3rem; border: 0; background: none; font-size: 1.2rem; cursor: pointer; color: var(--yale-blue); }
+.stepper button:disabled { color: #c3c8d0; cursor: default; }
+.stepper span { min-width: 1.6rem; text-align: center; font-weight: 700; }
+.in-bag { margin: 0.5rem 0 0; }
+.size { background: var(--ivory); }
+
+/* ---------- Bag + checkout ---------- */
+.bag-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 1.6rem; align-items: start; }
+.bag-items { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.9rem; }
+.bag-item { display: grid; grid-template-columns: 96px 1fr auto; gap: 1rem; align-items: center; background: var(--ivory); box-shadow: var(--frame); border-radius: 2px; padding: 0.8rem; }
+.bag-item img { width: 96px; height: 96px; object-fit: contain; background: #fff; }
+.bag-name { font-family: var(--serif); font-weight: 800; color: var(--yale-blue); text-decoration: none; font-size: 1.05rem; }
+.bag-item p { margin: 0.15rem 0 0.4rem; }
+.bag-line-end { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; }
+.bag-line-end strong { font-family: var(--serif); font-size: 1.1rem; }
+.checkout { background: var(--ivory); box-shadow: var(--frame); border-radius: 2px; padding: 1.2rem 1.3rem; display: flex; flex-direction: column; gap: 0.85rem; position: sticky; top: 90px; }
+.checkout h2 { margin: 0; font-size: 1.6rem; }
+.checkout p { margin: 0; }
+.checkout label { display: flex; flex-direction: column; gap: 0.3rem; font-weight: 500; font-size: 0.9rem; }
+.checkout input:not([type='checkbox']), .checkout textarea { padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #fff; }
+.checkout textarea { font-family: var(--hand); font-size: 1.25rem; resize: vertical; }
+.gift-toggle { flex-direction: row !important; align-items: center; gap: 0.7rem !important; border: 1.5px solid var(--line); border-radius: 10px; padding: 0.6rem; cursor: pointer; background: #fff; }
+.gift-toggle.on { border-color: var(--brass); background: #fff8ea; }
+.gift-toggle span:last-child { display: flex; flex-direction: column; }
+.gift-toggle small { color: var(--muted); font-weight: 400; }
+.toile-swatch { width: 48px; height: 48px; border-radius: 6px; flex-shrink: 0; background: var(--ivory) url('/art/toile.svg') 0 0 / 300px; border: 1px solid var(--brass-light); position: relative; }
+.toile-swatch::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 42%, #b3263a 42% 58%, transparent 58%), linear-gradient(transparent 42%, #b3263a 42% 58%, transparent 58%); opacity: 0.85; }
+.gift-card-preview { background: var(--paper); border: 1px solid var(--brass-light); border-radius: 4px; padding: 0.8rem 1rem; transform: rotate(-1deg); box-shadow: 2px 3px 0 rgb(176 141 87 / 0.2); }
+.gift-card-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.2rem !important; }
+.checkout-total, .receipt-total { display: flex; justify-content: space-between; align-items: baseline; border-top: 3px double var(--brass-light); padding-top: 0.6rem; font-size: 1.05rem; }
+.checkout-total strong, .receipt-total strong { font-family: var(--serif); font-size: 1.5rem; color: var(--yale-blue); }
+.receipt { max-width: 640px; margin: 0 auto; background: var(--ivory); box-shadow: var(--frame), var(--shadow); padding: 2rem 2.2rem; text-align: center; border-radius: 2px; }
+.receipt h1 { font-size: clamp(2rem, 4vw, 2.8rem); margin: 0.3rem 0; }
+.receipt-items { list-style: none; padding: 0; margin: 1.2rem 0; text-align: left; display: flex; flex-direction: column; gap: 0.5rem; }
+.receipt-items li { display: grid; grid-template-columns: 56px 1fr auto; gap: 0.8rem; align-items: center; }
+.receipt-items img { width: 56px; height: 56px; object-fit: contain; background: #fff; border: 1px solid var(--line); }
+.receipt-items small { color: var(--muted); }
+.receipt .gift-card-preview { margin: 1rem auto; max-width: 420px; }
+.empty h1 { margin: 0.6rem 0 0.2rem; }
+.empty svg { margin: 0 auto; }
+
+/* ---------- Toast and Dan's cartwheel ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%); z-index: 120; background: var(--yale-blue); color: #fff;
+  border: 1.5px solid var(--brass); padding: 0.7rem 1.2rem; border-radius: 999px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+  font-size: 0.92rem; animation: toast 2.6s ease both; max-width: min(92vw, 560px); text-align: center;
+}
+@keyframes toast { 0% { opacity: 0; transform: translate(-50%, 20px); } 10%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 10px); } }
+.cartwheel-stage { position: fixed; inset: 0; z-index: 200; pointer-events: none; overflow: hidden; }
+.cartwheel-banner {
+  position: absolute; top: 18%; left: 50%; transform: translateX(-50%); margin: 0; white-space: nowrap;
+  font-family: var(--serif); font-weight: 900; font-size: clamp(1.6rem, 4vw, 2.8rem); color: var(--yale-blue);
+  background: var(--ivory); box-shadow: var(--frame), 0 12px 30px rgb(0 0 0 / 0.2); padding: 0.6rem 1.6rem;
+  animation: banner 3.4s ease both;
+}
+@keyframes banner { 0% { opacity: 0; transform: translateX(-50%) scale(0.6); } 12%, 82% { opacity: 1; transform: translateX(-50%) scale(1); } 100% { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+.cartwheel-track { position: absolute; bottom: 14vh; left: 0; width: 100%; height: 180px; }
+.cartwheel-dan { position: absolute; left: 0; bottom: 0; width: 150px; height: 164px; animation: cartwheel 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
+.cartwheel-dan svg { display: block; }
+@keyframes cartwheel {
+  0% { transform: translateX(-180px) translateY(0) rotate(0deg); }
+  25% { transform: translateX(22vw) translateY(-40px) rotate(360deg); }
+  50% { transform: translateX(46vw) translateY(0) rotate(720deg); }
+  75% { transform: translateX(72vw) translateY(-40px) rotate(1080deg); }
+  100% { transform: translateX(calc(100vw + 40px)) translateY(0) rotate(1440deg); }
+}
+.confetti { position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px; animation: confetti 2.8s ease-in both; }
+@keyframes confetti { 0% { opacity: 1; translate: 0 0; } 100% { opacity: 0; translate: 30px 105vh; rotate: 540deg; } }
+
+/* ---------- Chat with Handsome Dan ---------- */
+.chat-panel { border: 1px solid var(--brass-light); background: var(--ivory); }
+.chat-panel header { background: var(--yale-blue); border-bottom: 2px solid var(--brass); }
+.chat-who { display: flex; align-items: center; gap: 0.6rem; }
+.chat-who strong { font-family: var(--serif); font-size: 1.15rem; display: block; }
+.chat-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--ivory); border: 2px solid var(--brass); display: grid; place-items: center; overflow: hidden; flex-shrink: 0; }
+.chat-avatar svg { margin-top: 6px; }
+.chat-messages { background: linear-gradient(rgb(255 253 247 / 0.9), rgb(255 253 247 / 0.9)), url('/art/toile.svg') 0 0 / 520px; }
+.bubble.assistant { position: relative; margin-left: 34px; background: var(--paper); border: 1px solid var(--brass-light); }
+.bubble-dan { position: absolute; left: -36px; top: -4px; width: 30px; height: 30px; border-radius: 50%; background: var(--ivory); border: 1.5px solid var(--brass-light); display: grid; place-items: center; overflow: hidden; }
+.bubble-dan svg { margin-top: 4px; }
+.bubble.user { background: var(--yale-blue); }
+.bubble.typing span { width: auto; height: auto; background: none; font-size: 0.9rem; }
+.quick-replies button { border-color: var(--brass); color: var(--yale-blue); background: var(--ivory); }
+.quick-replies button:hover { background: var(--yale-blue); border-color: var(--yale-blue); color: #fff; }
+.chat-toggle {
+  width: 78px; height: 78px; background: var(--ivory); border: 3px solid var(--yale-blue); box-shadow: 0 0 0 3px var(--brass), 0 10px 26px rgb(0 0 0 / 0.25);
+  display: grid; place-items: center; padding: 0; position: relative; overflow: visible;
+}
+.chat-toggle svg { margin-top: 10px; }
+.chat-toggle.open { background: var(--yale-blue); }
+.chat-x { color: #fff; font-size: 2rem; line-height: 1; }
+.chat-toggle:hover { background: #fff; transform: rotate(-5deg); }
+.chat-toggle-label {
+  position: absolute; right: 88px; top: 50%; transform: translateY(-50%); white-space: nowrap; background: var(--ivory);
+  border: 1.5px solid var(--brass); border-radius: 14px 14px 2px 14px; padding: 0.15rem 0.7rem; font-family: var(--hand);
+  font-size: 1.3rem; color: var(--yale-blue); box-shadow: var(--shadow); animation: nudge 4s ease-in-out infinite;
+}
+@keyframes nudge { 0%, 85%, 100% { transform: translateY(-50%); } 90% { transform: translateY(-50%) rotate(-4deg); } 95% { transform: translateY(-50%) rotate(3deg); } }
+.chat-toggle.jumping svg { animation: dan-jump 1s cubic-bezier(0.3, 0.7, 0.4, 1) both; }
+
+/* ---------- Footer ---------- */
+.footer { border-top: 3px double var(--brass); padding: 1.8rem 1rem; }
+.footer-tower { height: 70px; margin: 0 auto 0.5rem; filter: invert(1) brightness(1.6) sepia(0.4); opacity: 0.85; }
+.footer-name { font-family: var(--serif); font-size: 1.25rem; color: #fff; }
+
+/* ---------- Auth pages ---------- */
+.auth-form { background: var(--ivory); box-shadow: var(--frame); border-radius: 2px; }
+
+/* ---------- Motion preferences + small screens ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .jumping svg, .chat-toggle.jumping svg, .cartwheel-dan, .confetti, .chat-toggle-label, .woof { animation: none !important; }
+}
+@media (max-width: 900px) {
+  .shop-layout, .bag-layout { grid-template-columns: 1fr; }
+  .filters, .checkout { position: static; max-height: none; }
+  .hero-tiles { grid-template-columns: 1fr 1fr; grid-template-rows: auto; grid-template-areas: 'c c' 't0 t1' 't2 t3' 't4 t5' 't6 t7'; }
+  .tile { min-height: 150px; }
+  .awning { top: 96px; }
+}
+@media (max-width: 600px) {
+  .masthead-title .ornament { display: none; }
+  .chat-toggle-label { display: none; }
+  .bag-item { grid-template-columns: 70px 1fr; }
+  .bag-item img { width: 70px; height: 70px; }
+  .bag-line-end { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; }
+}
+
+/* Handsome Dan sits centred under the title, like a logo. */
+.masthead-title { display: flex; width: fit-content; margin: 0 auto; }
+.masthead-dan { display: flex; width: fit-content; margin: -0.2rem auto 0; }
+
+/* Compact navigation on phones */
+@media (max-width: 600px) {
+  .masthead-strip { font-size: 0.72rem; }
+  .navbar { flex-wrap: wrap; gap: 0.3rem 0.8rem; padding: 0.4rem 0.8rem; justify-content: center; }
+  .navbar .nav-links, .navbar .nav-account { gap: 0.8rem; }
+  .navbar a { font-size: 0.98rem; }
+  .navbar .btn-nav { font-size: 0.75rem; padding: 0.3rem 0.6rem; }
+  .greeting { display: none; }
+  .awning { position: static; }
+  .chat-toggle { width: 64px; height: 64px; }
+}
