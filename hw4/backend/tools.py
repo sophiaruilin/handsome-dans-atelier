@@ -15,6 +15,8 @@ from pathlib import Path
 
 from models import (
     CatalogueOverview,
+    CustomerProfile,
+    MyAccount,
     Product,
     ProductInfo,
     ProductSearchResult,
@@ -29,6 +31,8 @@ from models import (
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "data" / "campus_customs.db"
 PRODUCTS_DIR = ROOT / "data" / "products"
+# Waitlist sign-ups live in their own file so the shop's product tables are never written.
+WAITLIST_DB = Path(__file__).resolve().parent / "waitlist.db"
 
 SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL"]
 LOW_STOCK_PER_SIZE = 5    # a size with 1-5 left is "selling fast"
@@ -285,4 +289,28 @@ def stock_check(p: Product, size_asked: str) -> StockCheck:
         product_id=p.product_id, name=p.name, size_asked=size_asked, size=row.size, carried=True,
         quantity=row.quantity, status=row.status, in_stock=row.quantity > 0,
         other_sizes_in_stock=others, message=message,
+    )
+
+
+# --- The logged-in shopper's own account (for the agent's get_my_account tool) ---------------
+
+def my_account(customer: CustomerProfile) -> MyAccount:
+    """Read-only summary of one shopper's own data. Always keyed by the session's user, never by model input."""
+    with shop_db() as conn:
+        saved = conn.execute("SELECT count(*) FROM chat_messages WHERE user_id = ?", (customer.user_id,)).fetchone()[0]
+    waitlist: list[str] = []
+    if WAITLIST_DB.exists():
+        with sqlite3.connect(f"file:{WAITLIST_DB.as_posix()}?mode=ro", uri=True) as conn:
+            rows = conn.execute(
+                "SELECT product_id, size FROM waitlist WHERE email = ? ORDER BY id", (customer.email.lower(),)
+            ).fetchall()
+        names = {p.product_id: p.name for p in get_products([r[0] for r in rows])}
+        waitlist = [f"{names.get(pid, pid)}{f' (size {size})' if size else ''}" for pid, size in rows]
+    return MyAccount(
+        first_name=customer.first_name,
+        last_name=customer.last_name,
+        email=customer.email,
+        member_since=customer.member_since,
+        saved_messages=saved,
+        waitlist=waitlist,
     )

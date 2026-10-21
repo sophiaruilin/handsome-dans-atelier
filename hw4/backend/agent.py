@@ -1,10 +1,11 @@
 """PydanticAI Campus Customs shop agent, called by the /api/chat route in main.py.
 
-run_agent(message, history, product_id, user) -> ChatResponse with the reply, the product
+run_agent(message, history, page, customer) -> ChatResponse with the reply, the product
 cards to show under it, on-page search results (when the shopper is browsing), and which tools ran.
 
-- Instructions: prompts/prompt.md (re-read each message), plus a short per-request context (the product page the
-  shopper is on, and their first name if logged in).
+- Instructions: prompts/prompt.md (re-read each message), plus two per-message blocks built from
+  the deps: who is chatting (CustomerProfile, logged-in shoppers only) and where they are
+  (PageContext; product facts looked up from the database).
 - Model: gpt-6-astra via Portkey (PORTKEY_API_KEY in .env), through the OpenAI Responses API.
   Override with OPENAI_MODEL=...
 - Tools: search_products, get_product_info, check_stock and catalogue_overview. Thin wrappers
@@ -33,13 +34,15 @@ from models import (
     CatalogueOverview,
     ChatMessage,
     ChatResponse,
+    CustomerProfile,
+    MyAccount,
+    PageContext,
     PageResults,
     ProductInfo,
     ProductSearchResult,
     SearchFilters,
     ShopReply,
     StockCheck,
-    User,
 )
 
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -56,8 +59,10 @@ load_dotenv(BACKEND_DIR.parent.parent / ".env")
 
 @dataclass
 class ShopState:
-    product_id: str | None = None  # product page the shopper is viewing
-    first_name: str | None = None  # set when logged in
+    """Agent deps: who is chatting and where they are. Built by main.py from the session and the request."""
+
+    customer: CustomerProfile | None = None  # None for guests
+    page: PageContext = field(default_factory=PageContext)
     tools_used: list[str] = field(default_factory=list)
     # Each search_products call and its match count, so the page can show the agent's search.
     searches: list[tuple[SearchFilters, int]] = field(default_factory=list)
@@ -74,16 +79,41 @@ def shop_prompt() -> str:
 
 
 @agent.instructions
+def customer_context(ctx: RunContext[ShopState]) -> str:
+    """Who is chatting. Name only; the email stays behind the get_my_account tool until it's needed."""
+    c = ctx.deps.customer
+    if not c:
+        return (
+            "## Who you're talking to\nA guest (not logged in). Their chat isn't saved; if they want you to "
+            "remember them next time, they can create an account."
+        )
+    return (
+        f"## Who you're talking to\nA logged-in customer: **{c.first_name} {c.last_name}**, member since "
+        f"{c.member_since}. Greet them by first name. Earlier messages in this chat come from their saved history, "
+        "so you can refer back to them (\"the hoodie you asked about last time\"). For their email, waitlist or "
+        "account details, call `get_my_account`."
+    )
+
+
+@agent.instructions
 def page_context(ctx: RunContext[ShopState]) -> str:
-    lines = ["## Context for this message"]
-    if ctx.deps.product_id and (p := tools.get_product(ctx.deps.product_id)):
-        lines.append(f"The shopper is viewing **{p.name}** (product_id `{p.product_id}`).")
+    """Where the shopper is. The browser sends only ids; the facts come from the database."""
+    page = ctx.deps.page
+    lines = ["## Where the shopper is", f"Page: `{page.path}`"]
+    p = tools.get_product(page.product_id) if page.product_id else None
+    if p:
+        lines += [
+            f"They are on the product page for **{p.name}** (product_id `{p.product_id}`): {p.garment_type}, "
+            f"${p.price:.2f}, colors: {', '.join(p.colors)}.",
+            "\"This\", \"it\", \"this one\" and \"the one I'm looking at\" mean this product. Use its product_id with "
+            "get_product_info or check_stock; don't ask which item they mean.",
+            "Colors are fixed per product (there are no color options), so for \"do you have this in pink?\" say "
+            "which colors this one comes in, then search for similar items in the color they asked for.",
+        ]
+    elif page.results_title:
+        lines.append(f'The Products page is showing chat search results titled "{page.results_title}".')
     else:
-        lines.append("The shopper is not on a product page.")
-    if ctx.deps.first_name:
-        lines.append(f"The shopper is logged in as {ctx.deps.first_name}. You may greet them by first name.")
-    else:
-        lines.append("The shopper is browsing as a guest.")
+        lines.append("They are not on a product page.")
     return "\n".join(lines)
 
 
@@ -150,6 +180,18 @@ def check_stock(ctx: RunContext[ShopState], product_id: str, size: str) -> Stock
 
 
 @agent.tool
+def get_my_account(ctx: RunContext[ShopState]) -> MyAccount | str:
+    """The logged-in shopper's own details: name, email, member-since date, saved chat size and waitlist.
+
+    Use when they ask about their account, email or waitlist. Only ever returns the current shopper's data.
+    """
+    ctx.deps.tools_used.append("get_my_account")
+    if not ctx.deps.customer:
+        return "The shopper is a guest (not logged in), so there is no account to look up."
+    return tools.my_account(ctx.deps.customer)
+
+
+@agent.tool
 def catalogue_overview(ctx: RunContext[ShopState]) -> CatalogueOverview:
     """Garment types (with counts), colors, sizes and price range the shop carries."""
     ctx.deps.tools_used.append("catalogue_overview")
@@ -157,13 +199,19 @@ def catalogue_overview(ctx: RunContext[ShopState]) -> CatalogueOverview:
 
 
 def _history(messages: list[ChatMessage]) -> list[ModelMessage]:
-    """Website chat log -> PydanticAI message history (most recent turns only)."""
+    """Chat log -> PydanticAI message history (most recent turns only).
+
+    Assistant turns get a note of the products their cards showed, so "the second one" or
+    "the hoodie you showed me" resolves to a real product_id.
+    """
     out: list[ModelMessage] = []
     for m in messages[-MAX_HISTORY_MESSAGES:]:
         if m.role == "user":
             out.append(ModelRequest(parts=[UserPromptPart(content=m.content)]))
         else:
-            out.append(ModelResponse(parts=[TextPart(content=m.content)]))
+            shown = "; ".join(f"{i}. {p.name} ({p.product_id})" for i, p in enumerate(m.products, 1))
+            text = f"{m.content}\n\n[Product cards shown: {shown}]" if shown else m.content
+            out.append(ModelResponse(parts=[TextPart(content=text)]))
     return out
 
 
@@ -192,10 +240,10 @@ def _client_and_model() -> tuple[AsyncOpenAI, OpenAIResponsesModel]:
 async def run_agent(
     message: str,
     history: list[ChatMessage] | None = None,
-    product_id: str | None = None,
-    user: User | None = None,
+    page: PageContext | None = None,
+    customer: CustomerProfile | None = None,
 ) -> ChatResponse:
-    state = ShopState(product_id=product_id, first_name=user.first_name if user else None)
+    state = ShopState(customer=customer, page=page or PageContext())
     client, model = _client_and_model()
     async with client:
         result = await agent.run(

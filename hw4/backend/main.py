@@ -2,7 +2,8 @@
 
 - Products: catalogue, stock by size and product images from data/campus_customs.db (tools.py).
 - Accounts: create account / log in / log out with session cookies (auth.py).
-- Chat: /api/chat runs the PydanticAI shop agent (agent.py) and saves logged-in shoppers' chats.
+- Chat: /api/chat runs the PydanticAI shop agent (agent.py). Logged-in shoppers' chats are saved in
+  chat_messages and reloaded as the agent's memory; guests' chats are not stored.
 - Waitlist: back-in-stock email sign-ups.
 
 Run:  cd backend && uvicorn main:app --reload --port 8000
@@ -16,7 +17,6 @@ import logging
 import os
 import sqlite3
 from datetime import datetime, timezone
-from pathlib import Path
 
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,6 +31,7 @@ from models import (
     ChatMessage,
     ChatRequest,
     ChatResponse,
+    CustomerProfile,
     LoginRequest,
     Product,
     SignupRequest,
@@ -40,8 +41,6 @@ from models import (
 
 log = logging.getLogger("campus-customs")
 
-# Waitlist sign-ups go in their own file so the shop's product tables are never written.
-WAITLIST_DB = Path(__file__).resolve().parent / "waitlist.db"
 # Cookies need HTTPS when deployed; local development runs on plain http://localhost.
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 
@@ -51,7 +50,7 @@ app = FastAPI(title="Campus Customs API")
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type"],
     allow_credentials=True,
 )
@@ -67,7 +66,7 @@ def users_db() -> sqlite3.Connection:
 
 
 def waitlist_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(WAITLIST_DB)
+    conn = sqlite3.connect(tools.WAITLIST_DB)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS waitlist (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -116,9 +115,25 @@ def to_user(row: sqlite3.Row) -> User:
 
 
 def current_user(conn: sqlite3.Connection, token: str | None) -> User | None:
-    user_id = auth.session_user_id(conn, token)
-    row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone() if user_id else None
+    row = current_user_row(conn, token)
     return to_user(row) if row else None
+
+
+def current_user_row(conn: sqlite3.Connection, token: str | None) -> sqlite3.Row | None:
+    user_id = auth.session_user_id(conn, token)
+    return conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone() if user_id else None
+
+
+def customer_profile(row: sqlite3.Row) -> CustomerProfile:
+    """What the agent knows about a logged-in shopper (never the password hash)."""
+    user = to_user(row)
+    return CustomerProfile(
+        user_id=user.id,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        email=user.email,
+        member_since=(row["created_at"] or "")[:10],
+    )
 
 
 def start_session(response: Response, conn: sqlite3.Connection, user_id: int) -> None:
@@ -199,22 +214,42 @@ def save_message(conn: sqlite3.Connection, user_id: int, role: str, content: str
     )
 
 
+def load_history(conn: sqlite3.Connection, user_id: int, limit: int = MAX_HISTORY_MESSAGES) -> list[ChatMessage]:
+    """A shopper's most recent saved messages, oldest first."""
+    rows = conn.execute(
+        "SELECT role, content, products_json FROM chat_messages WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+        (user_id, limit),
+    ).fetchall()
+    messages = []
+    for r in reversed(rows):
+        # Re-read saved cards from the catalogue so prices and stock are current.
+        ids = [p["product_id"] for p in json.loads(r["products_json"] or "[]")]
+        messages.append(ChatMessage(role=r["role"], content=r["content"], products=tools.get_products(ids)))
+    return messages
+
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(body: ChatRequest, cc_session: str | None = Cookie(default=None)):
     with users_db() as conn:
-        user = current_user(conn, cc_session)
-    product_id = body.product_id if body.product_id and tools.get_product(body.product_id) else None
+        row = current_user_row(conn, cc_session)
+        customer = customer_profile(row) if row else None
+        # Logged in: the saved history is the source of truth (the browser's copy could be stale or edited).
+        # Guests: nothing is stored, so use what the browser sends.
+        history = load_history(conn, customer.user_id) if customer else body.history
+    page = body.page
+    if page.product_id and not tools.get_product(page.product_id):
+        page = page.model_copy(update={"product_id": None})
     try:
-        result = await run_agent(body.message, body.history, product_id, user)
+        result = await run_agent(body.message, history, page, customer)
     except UsageLimitExceeded:
         raise HTTPException(429, "That question needed too many steps. Try asking something more specific.")
     except (ModelHTTPError, RuntimeError):
         log.exception("chat failed")
         raise HTTPException(502, "The shop assistant is unavailable right now. Please try again in a moment.")
-    if user:
+    if customer:
         with users_db() as conn:
-            save_message(conn, user.id, "user", body.message, [])
-            save_message(conn, user.id, "assistant", result.reply, result.products)
+            save_message(conn, customer.user_id, "user", body.message, [])
+            save_message(conn, customer.user_id, "assistant", result.reply, result.products)
     return result
 
 
@@ -223,18 +258,17 @@ def chat_history(cc_session: str | None = Cookie(default=None)):
     """A logged-in shopper's recent chat, so the widget picks up where they left off."""
     with users_db() as conn:
         user = current_user(conn, cc_session)
+        return load_history(conn, user.id) if user else []
+
+
+@app.delete("/api/chat/history", status_code=204)
+def clear_chat_history(cc_session: str | None = Cookie(default=None)):
+    """Let a logged-in shopper start a fresh conversation (deletes their saved messages)."""
+    with users_db() as conn:
+        user = current_user(conn, cc_session)
         if not user:
-            return []
-        rows = conn.execute(
-            "SELECT role, content, products_json FROM chat_messages WHERE user_id = ? ORDER BY id DESC LIMIT ?",
-            (user.id, MAX_HISTORY_MESSAGES),
-        ).fetchall()
-    messages = []
-    for r in reversed(rows):
-        # Re-read saved cards from the catalogue so prices and stock are current.
-        ids = [p["product_id"] for p in json.loads(r["products_json"] or "[]")]
-        messages.append(ChatMessage(role=r["role"], content=r["content"], products=tools.get_products(ids)))
-    return messages
+            raise HTTPException(401, "Log in to manage your chat history.")
+        conn.execute("DELETE FROM chat_messages WHERE user_id = ?", (user.id,))
 
 
 # --- Waitlist ------------------------------------------------------------------------------

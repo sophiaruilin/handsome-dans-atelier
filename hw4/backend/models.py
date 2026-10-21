@@ -145,10 +145,42 @@ class ChatMessage(BaseModel):
     products: list[Product] = Field(default_factory=list)
 
 
+class PageContext(BaseModel):
+    """Where the shopper is on the website. Ids only: the server looks up the facts itself."""
+
+    path: str = Field(default="/", max_length=200, description="Website path, e.g. /products/basic-hoodie-big-yale")
+    product_id: str | None = Field(default=None, max_length=200, description="Product page being viewed, if any")
+    results_title: str | None = Field(
+        default=None, max_length=200, description="Heading of chat search results showing on the page, if any"
+    )
+
+
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
+    # Used for guests only. For logged-in shoppers the server loads history from the database.
     history: list[ChatMessage] = Field(default_factory=list, max_length=100)
-    product_id: str | None = None  # the product page the shopper is viewing, if any
+    page: PageContext = Field(default_factory=PageContext)
+
+
+class CustomerProfile(BaseModel):
+    """Who is chatting (logged-in shoppers only). Lives in the agent's deps."""
+
+    user_id: int
+    first_name: str
+    last_name: str
+    email: str
+    member_since: str = Field(description="Date the account was created, YYYY-MM-DD")
+
+
+class MyAccount(BaseModel):
+    """get_my_account tool result: the logged-in shopper's own details."""
+
+    first_name: str
+    last_name: str
+    email: str
+    member_since: str
+    saved_messages: int = Field(description="Messages in their saved chat history")
+    waitlist: list[str] = Field(description="Products (and sizes) they asked to be emailed about")
 
 
 class ShopReply(BaseModel):

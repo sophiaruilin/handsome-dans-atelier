@@ -52,3 +52,10 @@ export interface PageResults {
   total_matches: number
   products: Product[]
 }
+
+// Where the shopper is (ids only; the back end looks up the product facts).
+export interface PageContext {
+  path: string
+  product_id: string | null
+  results_title: string | null
+}

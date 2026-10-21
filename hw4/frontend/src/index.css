@@ -239,3 +239,9 @@ h1 { font-size: clamp(1.8rem, 3.5vw, 2.6rem); margin: 0.2em 0 0.4em; }
   background: #e8f0fa; color: var(--yale-blue); font: inherit; font-size: 0.8rem; font-weight: 600;
 }
 .on-page-note:hover { background: #d6e4f5; }
+
+/* Chat header actions (Problem 8) */
+.chat-actions { display: flex; align-items: center; gap: 0.4rem; }
+.chat-new { background: rgb(255 255 255 / 0.15); border: 1px solid rgb(255 255 255 / 0.4); color: #fff; border-radius: 999px; padding: 0.2rem 0.65rem; font: inherit; font-size: 0.75rem; cursor: pointer; }
+.chat-new:hover:not(:disabled) { background: rgb(255 255 255 / 0.25); }
+.chat-new:disabled { opacity: 0.4; cursor: default; }

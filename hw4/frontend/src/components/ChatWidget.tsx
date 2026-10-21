@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import Markdown from 'react-markdown'
 import { Link, useLocation, useMatch, useNavigate } from 'react-router-dom'
-import { formatPrice, getChatHistory, sendChat } from '../api'
+import { clearChatHistory, formatPrice, getChatHistory, sendChat } from '../api'
 import { useAuth } from '../auth/context'
 import { useChatResults } from '../chat/context'
-import type { ChatMessage, PageResults, Product } from '../types'
+import type { ChatMessage, PageContext, PageResults, Product } from '../types'
 import StockBadge from './StockBadge'
 
 const greeting = (firstName?: string): ChatMessage => ({
@@ -68,7 +68,13 @@ export default function ChatWidget() {
     setDraft('')
     setSending(true)
     try {
-      const res = await sendChat(text, history, productId)
+      // Ids only: the back end looks up the product itself, so "do you have this in pink?" works.
+      const page: PageContext = {
+        path: pathname,
+        product_id: productId ?? null,
+        results_title: pathname === '/products' ? (chatResults.results?.title ?? null) : null,
+      }
+      const res = await sendChat(text, history, page)
       const pageResults = res.page_results ?? undefined
       setMessages((m) => [...m, { role: 'assistant', content: res.reply, products: res.products, pageResults }])
       if (pageResults) showOnPage(pageResults)
@@ -83,6 +89,12 @@ export default function ChatWidget() {
     }
   }
 
+  async function newChat() {
+    if (user && !window.confirm('Start a new chat? This clears your saved chat history.')) return
+    if (user) await clearChatHistory().catch(() => {})
+    setMessages([greeting(user?.first_name)])
+  }
+
   return (
     <div className="chat">
       {open && (
@@ -90,11 +102,16 @@ export default function ChatWidget() {
           <header>
             <div>
               <strong>Shop assistant</strong>
-              <small>Campus Customs</small>
+              <small>{user ? '💾 Chat saved to your account' : 'Guest chat · log in to save it'}</small>
             </div>
-            <button className="chat-close" onClick={() => setOpen(false)} aria-label="Close chat">
-              ×
-            </button>
+            <div className="chat-actions">
+              <button className="chat-new" onClick={newChat} disabled={sending || messages.length < 2}>
+                New chat
+              </button>
+              <button className="chat-close" onClick={() => setOpen(false)} aria-label="Close chat">
+                ×
+              </button>
+            </div>
           </header>
           <div className="chat-messages" ref={listRef}>
             {messages.map((m, i) => (

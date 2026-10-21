@@ -165,3 +165,15 @@ Template for each problem (copy for each new problem):
 > now we will add a neat feature to the site. when customer asks about type of item, like what hoods do you have, the agent should search catalogue - and the website should dynamically show those matching items as product cards (image, name, price, short info). this is an API contract: agent returns structured product matches and then the front end renders them on te ewbsite, it looks really cool.
 >
 > after the dynamic product cards are loaded by new feature, make sure same single-item page behavior you built in problem 3 still works: each product card - including ones the chat just put on the page - should still open the detail view (larg eimage + full info) when clicked. update prompts/prompt.md and output/harness.md so it is clear how search results reach the page.
+
+## Problem 8 — Customer memory
+
+**Prompt (my own words):**
+
+> Problem 8: Customer memory
+>
+> WHen a shopper is logged in, save their chat hitsory in database in apropratie table and reload when they return. agent should know WHO is chatting (name, email) - put that in agent deps (or an equivalent clear pattern, whatever you recommend) and/or tools that the agent can call.
+>
+> Also pass enough page context that if someone is on a product page and asks do you have this in pink, etc. the agent knows which item they mean. (hint you can put code into the agent context - what do you recommend / best practices for tthis to achieve?)
+>
+> guests can still chat, but history only needs to persist for logged-in users. document in output/harness.md: how user chat history is stored, what customer fields the agent sees, and how page context is passed.

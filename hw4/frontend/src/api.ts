@@ -1,4 +1,4 @@
-import type { ChatMessage, PageResults, Product, User } from './types'
+import type { ChatMessage, PageContext, PageResults, Product, User } from './types'
 
 // Relative URLs: Vite proxies /api and /media to the FastAPI back end (see vite.config.ts).
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -34,18 +34,21 @@ export const joinWaitlist = (productId: string, email: string, size?: string) =>
     postJson({ product_id: productId, email, size: size ?? null }),
   )
 
-// The back end runs the PydanticAI shop agent and, for logged-in shoppers, saves the chat.
-export const sendChat = (message: string, history: ChatMessage[], productId?: string) =>
+// The back end runs the PydanticAI shop agent. For logged-in shoppers it saves the chat and uses
+// the saved history as memory (the history sent here is only used for guests).
+export const sendChat = (message: string, history: ChatMessage[], page: PageContext) =>
   request<{ reply: string; products: Product[]; page_results: PageResults | null; tools_used: string[] }>(
     '/api/chat',
     postJson({
       message,
-      history: history.map(({ role, content }) => ({ role, content })),
-      product_id: productId ?? null,
+      history: history.map(({ role, content, products }) => ({ role, content, products: products ?? [] })),
+      page,
     }),
   )
 
 export const getChatHistory = () => request<ChatMessage[]>('/api/chat/history')
+
+export const clearChatHistory = () => request<void>('/api/chat/history', { method: 'DELETE' })
 
 // Accounts. The session lives in an HttpOnly cookie that the browser sends automatically.
 export const getMe = () => request<User | null>('/api/auth/me')

@@ -404,3 +404,87 @@ On Windows, a reload can still occasionally stall after code changes ("Reloading
 | Asked "How much is the Basic Hoodie Big Yale and is XL in stock?" | Answered $68.00, XL has 2 left (selling fast). The page did **not** change |
 | Asked "Show me navy crewnecks under $60" | The page switched to "Navy crewnecks under $60", 9 matches, with chips "crewneck · navy · under $60.00" |
 | Clicked **Show all products**, then the chat's 📍 button | Full catalogue (102 styles), then the navy crewneck results again |
+
+## Problem 8 — Customer memory
+
+### How user chat history is stored
+
+- **Table:** `chat_messages` in `campus_customs.db`. The seed database already had this table, so no new table was needed.
+
+| Column | What goes in it |
+|---|---|
+| `id` | Auto-increment; keeps messages in order |
+| `user_id` | The logged-in user (foreign key to `users.id`) |
+| `role` | `user` or `assistant` |
+| `content` | The message text (the assistant's is Markdown) |
+| `products_json` | For assistant replies, the product cards shown (JSON); otherwise `NULL` |
+| `created_at` | Timestamp, set by the database |
+
+- **When it's written:** after every successful `/api/chat` reply for a logged-in shopper, `main.py` saves two rows: the shopper's message and the agent's reply, with its cards. Guests' messages are **never** written (verified: 0 rows without a `user_id`).
+- **When it's read:**
+  1. **Returning to the site:** `GET /api/chat/history` returns the last 20 messages. The chat widget loads them when it mounts for a logged-in user, and remounts on login and logout. Saved cards are re-read from the catalogue, so prices and stock are current.
+  2. **As the agent's memory:** on every `/api/chat`, the server loads the shopper's last 20 saved messages with `load_history()` and passes them to the agent as `message_history`. **For logged-in users, the server ignores the history the browser sends**, because a browser copy could be stale or edited. Guests' history comes from the browser and is never stored.
+- **Product references survive:** when history goes to the model, each assistant turn gets a line such as `[Product cards shown: 1. Champion Full Zip Hood (champion-full-zip-hood); 2. …]`. That way "the second one you showed me" resolves to a real `product_id`.
+- **Starting over:** the **New chat** button (`DELETE /api/chat/history`) deletes the shopper's own saved messages, after a confirm. For guests it just clears the panel.
+- **Privacy:** every query is keyed on the user id from the **session cookie**, never on anything the model or browser sends, so one shopper can't read another's chat.
+
+### What customer fields the agent sees
+
+The agent's deps (`ShopState` in `agent.py`) carry a `CustomerProfile` (`models.py`), which `main.py` builds from the session's `users` row:
+
+| Field | Where the agent sees it | Why |
+|---|---|---|
+| `first_name`, `last_name` | Every message, in the "Who you're talking to" instructions block | Greet the shopper by name and personalise replies |
+| `member_since` (from `users.created_at`) | Every message, same block | Context ("welcome back") |
+| `email` | **Only through the `get_my_account` tool** | Data minimisation: the email is available when the shopper asks ("what email is on my account?", waitlist questions), but isn't pasted into every model request |
+| `user_id` | Never shown to the model; used by tools as the key | The tools always look up the **session's** user, so the model can't ask for someone else's data |
+
+- `get_my_account` returns a `MyAccount`: first and last name, email, member since, number of saved messages, and the products (and sizes) on their **waitlist**, looked up by their email in `waitlist.db`.
+- The agent never sees the password hash or session tokens.
+- **Guests:** `customer` is `None`. The instructions say "A guest (not logged in)", and `get_my_account` replies that there's no account to look up.
+
+**Why deps plus instructions plus a tool:**
+
+- **Deps** are PydanticAI's typed, per-run way to pass server-side facts. They come from the session, not from model output, so they can be trusted.
+- **Dynamic instructions** (`@agent.instructions`) show the model the few facts it always needs, such as the name.
+- **A tool** holds the more sensitive or bulky details (email, waitlist), which are fetched only when relevant.
+
+### How page context is passed
+
+1. **Browser:** the chat widget sends `page` with every message as a `PageContext` with three fields:
+   - `path`: for example `/products/basic-hoodie-big-yale`
+   - `product_id`: from the URL when on a product page
+   - `results_title`: the heading of any chat results showing on the Products page
+
+   It sends **ids only, not product text**.
+2. **Server:** `main.py` checks that `product_id` exists in the catalogue (unknown ids are dropped) and puts the `PageContext` in the agent's deps.
+3. **Agent:** the `page_context` dynamic instruction looks up the product **in the database** and tells the model:
+   - the product's name, `product_id`, garment type, price and colors
+   - that "this", "it" and "this one" mean that product, so it should use the product_id with `get_product_info` or `check_stock` without asking which item
+   - that colors are fixed per product, so "do you have this in pink?" means: say which colors it comes in, then search other items in pink
+4. **Best-practice reasons:**
+   - **Ids from the client, facts from the server.** The browser could be edited, but the database can be trusted. Product text written by the client would also be a prompt-injection route.
+   - **The context goes in instructions, not in the shopper's message.** It refreshes every turn without piling up in the saved history.
+   - **It's fresh every message,** so if the shopper moves to another product mid-chat, "this" follows them.
+
+### Prompt additions
+
+A **"Customers and memory"** section in `prompts/prompt.md`:
+
+- greet logged-in customers by first name
+- use their saved conversation (sizes, gift recipients, products shown)
+- use `get_my_account` for account and waitlist questions, and never reveal anything about other customers
+- don't recite the email unless asked
+- guests aren't remembered
+- how to answer "this" on a product page
+
+### Verified in the browser (as Handsome Dan, starting with an empty history)
+
+| Step | Result |
+|---|---|
+| On the Basic Hoodie Big Yale page: "Do you have this in pink?" | "Hi Handsome! This Basic Hoodie Big Yale comes only in navy blue with white YALE lettering, not pink. We don't currently carry any pink items." It knew which item without being told, and the database confirms there are no pink products |
+| "I'm actually shopping for my mom. She wears a size M and loves gray." | Searched gray styles with M in stock; the page showed "Gray gift ideas in M for Mom" |
+| **Full page reload** on About Us, chat reopened | The 4 saved messages came back from the database |
+| "Remind me what size my mom wears? Is the second one you showed me in stock in that size? Also, what email is on my account?" | "you said your mom wears M and loves gray"; the second pick, Champion Reverse Weave Crewneck, "is in stock in M, 12 available" (database: M = 12); "Your account email is handsome.dan@campuscustoms.yale.edu" |
+| Logged out, then as a guest: "What's my email, and what size does my mom wear?" | "You're browsing as a guest, so I can't look up your email. I also don't have any information about your mom's size." Nothing leaked; the server has 0 guest messages |
+| Logged back in on another product page | Dan's 6 saved messages reloaded in the widget ("💾 Chat saved to your account") |
