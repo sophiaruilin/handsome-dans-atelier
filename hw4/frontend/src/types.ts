@@ -24,6 +24,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   products?: Product[] // cards shown under an assistant reply
+  pageResults?: PageResults // search this reply put on the page (website only, not sent back)
 }
 
 export interface User {
@@ -32,4 +33,22 @@ export interface User {
   last_name: string
   name: string
   email: string
+}
+
+export interface SearchFilters {
+  query: string
+  garment_type: string
+  color: string
+  max_price: number | null
+  size: string
+  in_stock_only: boolean
+}
+
+// Search matches the chat sends to the page (API contract: ChatResponse.page_results).
+export interface PageResults {
+  title: string
+  shopper_message: string
+  filters: SearchFilters
+  total_matches: number
+  products: Product[]
 }

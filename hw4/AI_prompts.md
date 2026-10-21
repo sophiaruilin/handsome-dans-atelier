@@ -155,3 +155,13 @@ Template for each problem (copy for each new problem):
 > expand prompts/prompt.md so agent knows to call these tools for price and stock questions. add or update return types in models.py
 >
 > in output/harness.md, list each tool and explain which model fields you chose for lookup results and why.
+
+## Problem 7 — Chat search that updates the page
+
+**Prompt (my own words):**
+
+> Problem 7: chat search that updates the page
+>
+> now we will add a neat feature to the site. when customer asks about type of item, like what hoods do you have, the agent should search catalogue - and the website should dynamically show those matching items as product cards (image, name, price, short info). this is an API contract: agent returns structured product matches and then the front end renders them on te ewbsite, it looks really cool.
+>
+> after the dynamic product cards are loaded by new feature, make sure same single-item page behavior you built in problem 3 still works: each product card - including ones the chat just put on the page - should still open the detail view (larg eimage + full info) when clicked. update prompts/prompt.md and output/harness.md so it is clear how search results reach the page.

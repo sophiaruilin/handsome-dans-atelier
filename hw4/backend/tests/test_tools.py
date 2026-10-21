@@ -90,7 +90,7 @@ def test_search_finds_by_keyword_and_respects_filters():
     assert result.total_matches > 0
     for s in result.products:
         assert "hood" in s.garment_type.lower()
-        assert any("navy" in c.lower() for c in s.colors)
+        assert "navy" in s.colors[0].lower()
         assert s.price <= 70
         assert "L" in s.sizes_in_stock
         assert s.price == sql_price(s.product_id)
@@ -104,3 +104,37 @@ def test_search_unknown_size_is_flagged_not_silently_ignored():
 def test_search_no_match():
     result = tools.search_products(query="snorkel")
     assert result.total_matches == 0 and result.products == []
+
+
+@pytest.mark.parametrize(
+    ("asked", "must_contain", "must_not_contain"),
+    [
+        ("hoodies", "hood", None),
+        ("t-shirt", None, "sweatshirt"),
+        ("tee", None, "sweatshirt"),
+        ("crewneck", "crew", "hood"),
+        ("quarter zip", "quarter-zip", None),
+    ],
+)
+def test_garment_categories(asked, must_contain, must_not_contain):
+    found = tools.search_all(tools.SearchFilters(garment_type=asked))
+    assert found
+    for p in found:
+        g = p.garment_type.lower()
+        if must_contain:
+            assert must_contain in g
+        if must_not_contain:
+            assert must_not_contain not in g
+
+
+def test_hoodie_search_finds_every_hooded_style():
+    with db() as conn:
+        expected = conn.execute("SELECT count(*) FROM catalogue WHERE lower(garment_type) LIKE '%hood%'").fetchone()[0]
+    assert len(tools.search_all(tools.SearchFilters(garment_type="hoodie"))) == expected
+
+
+def test_color_filter_uses_main_garment_color_not_lettering():
+    found = tools.search_all(tools.SearchFilters(garment_type="crewneck", color="navy"))
+    assert found and all("navy" in p.colors[0].lower() for p in found)
+    # e.g. a light gray crewneck with navy lettering is not a "navy crewneck"
+    assert not any(p.colors[0].lower().startswith("light gray") for p in found)

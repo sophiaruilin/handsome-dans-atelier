@@ -108,7 +108,7 @@ A floating panel in the bottom-right corner, on every page. I chose a floating p
 ### Run it
 
 ```
-cd backend && .venv/Scripts/uvicorn main:app --port 8000
+cd backend && ../.venv/Scripts/uvicorn main:app --reload --port 8000
 cd frontend && npm run dev
 ```
 
@@ -193,7 +193,7 @@ Example of a new account's stored value: `pbkdf2_sha256$1c042ca8cd1bb8d4038f1ec2
 | `prompts/prompt.md` | System prompt: the Campus Customs voice, how to answer, and safety basics |
 | `auth.py` | Password hashing and sessions (Problem 4) |
 
-Run it from `backend/`:
+Run it from `backend/`, with the virtual environment active. Since Problem 7, the environment lives in `hw4/.venv`, not `backend/.venv`. See "Server reloading" in Problem 7 for why.
 
 ```
 uvicorn main:app --reload --port 8000
@@ -330,3 +330,77 @@ Left out: `image_url` and `search_tags`. The model doesn't need them, and the we
 | On Basic Hoodie Big Yale: "How many are left in each size?" | 15/5/5/8/2/25 | XS 15, S 5, M 5, L 8, XL 2, XXL 25, with "selling fast" on S, M and XL | get_product_info |
 | On Champion Reverse Weave Crewneck: "Is the large in stock? And what's the price again?" | $58, L = 0 | "$58.00, but it's sold out in large. M and XL are still in stock" | check_stock, get_product_info |
 | "Can I get the Basic Hoodie Big Yale in 3XL?" | Not made | "We don't carry … 3XL. It comes in adult XS–XXL" | search → check_stock |
+
+
+## Problem 7 — Chat search that updates the page
+
+When a shopper asks the chat about a **kind** of item ("what hoodies do you have?", "navy crewnecks under $60"), the agent searches the catalogue, and **every match appears as product cards on the Products page**, next to the chat. The cards are the same `ProductCard` component as the regular catalogue, so clicking any of them opens the single-item page from Problem 3.
+
+### The API contract
+
+`POST /api/chat` returns a `ChatResponse` (`backend/models.py`):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `reply` | string | The agent's message (Markdown) |
+| `products` | `Product[]` | Up to 6 small cards under the reply in the chat |
+| `page_results` | `PageResults` or `null` | **New.** When set, the website shows these products on the page |
+| `tools_used` | string[] | Which tools ran |
+
+`PageResults` contains:
+
+- `title`: the heading the agent wrote, for example "Navy crewnecks under $60"
+- `shopper_message`: what the shopper asked
+- `filters`: the exact `search_products` arguments (`SearchFilters`)
+- `total_matches`
+- `products`: full `Product` records from the database, including image URL, price, colors and stock by size
+
+### How search results reach the page
+
+1. **The agent decides.** Its structured output (`ShopReply`) has two new fields:
+   - `show_on_page`: true when the shopper is browsing a kind of item; false for one-product questions such as price or stock
+   - `page_title`: the heading for the results
+
+   The rules for when to use each are in `prompts/prompt.md` ("Showing search results on the page").
+2. **The back end records the search.** Every `search_products` call is saved in the run's `ShopState.searches`, with its filters and match count.
+3. **The back end builds the results.** When `show_on_page` is true, `agent._page_results()` takes the **last search that found something** and re-runs it with no limit (`tools.search_all`). The agent only sees 8 results, but the page gets *every* match.
+   - The products come straight from the database, not from the model's text, so names, prices and stock on the page are always real.
+   - In-stock styles come first.
+4. **The front end shows them.**
+   - The chat widget receives `page_results` and stores it in `ChatResultsProvider`, a React context that sits above the routes.
+   - If the shopper isn't on `/products`, the widget navigates there. If they are, it scrolls to the top.
+   - The chat message gets a "📍 N matches showing on the page" button that brings those results back later.
+5. **The Products page renders them.**
+   - When the context holds results, `Products.tsx` shows the `ChatResults` section: a "From your chat" heading, the shopper's question, filter chips and a grid of `ProductCard`s that animate in.
+   - **Show all products** clears the results and returns to the full catalogue, with its filters and search box.
+6. **Clicking a card** opens `/products/{product_id}`, the single-item page with the large image, full description, price and size buttons, because the cards are the standard `ProductCard` with a `Link` to the product page.
+   - The results live in context, not in the page, so pressing **Back** returns to the same chat results.
+
+Questions about one product ("how much is the Basic Hoodie, is XL in stock?") return `page_results: null`, so the page doesn't change.
+
+### Search fixes found while testing
+
+| Issue | Fix |
+|---|---|
+| "What hoodies do you have?" found 23 of the 27 hooded styles, missing those labelled "hooded sweatshirt" | Garment categories in `tools.py` (`GARMENT_CATEGORIES` and `GARMENT_ALIASES`) match the Products page filters. "hoodie" now finds all 27 |
+| `garment_type="t-shirt"` matched 65 items, including sweat**shirts** | The t-shirt category excludes "sweat" items. Now 27 |
+| "Navy crewnecks" returned 23, including gray crewnecks with navy lettering | The color filter now checks the **main garment color** (`colors[0]`; the rest are lettering and graphic colors). Now 9, all navy |
+
+Seven new tests cover these (`tests/test_tools.py`, 21 tests in total, all passing).
+
+### Server reloading
+
+`uvicorn --reload` watches every file under `backend/`. With the virtual environment inside `backend/.venv`, OneDrive keeps touching files there, and the server reloaded over and over until requests hung. The environment now lives at **`hw4/.venv`**, outside the watched folder.
+
+On Windows, a reload can still occasionally stall after code changes ("Reloading…" with no new "Started server process"). If that happens, press Ctrl+C and start the server again.
+
+### Verified in the browser
+
+| Step | Result |
+|---|---|
+| On **About Us**, asked "What hoodies do you have?" | The site moved to Products and showed "Hoodies, 27 matches" as cards; the chat named 3 highlights |
+| Clicked a chat-placed card (Brooks Brothers Double Knit Full Zip Hoodie) | Opened `/products/brooks-brothers-double-knit-full-zip-hoodie-yale`: large image, $88.00, full description, size buttons (XS sold out, S 8 left …) |
+| Pressed Back | Same 27 chat results still showing |
+| Asked "How much is the Basic Hoodie Big Yale and is XL in stock?" | Answered $68.00, XL has 2 left (selling fast). The page did **not** change |
+| Asked "Show me navy crewnecks under $60" | The page switched to "Navy crewnecks under $60", 9 matches, with chips "crewneck · navy · under $60.00" |
+| Clicked **Show all products**, then the chat's 📍 button | Full catalogue (102 styles), then the navy crewneck results again |

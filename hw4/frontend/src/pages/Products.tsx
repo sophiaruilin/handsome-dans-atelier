@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getProducts } from '../api'
+import ChatResults from '../components/ChatResults'
 import ProductCard from '../components/ProductCard'
+import { useChatResults } from '../chat/context'
 import type { Product } from '../types'
 
 // Group the catalogue's free-text garment types into a few shopper-friendly filters.
@@ -19,6 +21,7 @@ export default function Products() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('All')
   const [query, setQuery] = useState('')
+  const chat = useChatResults()
 
   useEffect(() => {
     getProducts()
@@ -42,43 +45,52 @@ export default function Products() {
     <section className="page">
       <div className="page-head">
         <h1>Shop the collection</h1>
-        <p className="lead">Every team, every college, every member of the Bulldog family.</p>
+        <p className="lead">
+          Every team, every college, every member of the Bulldog family. Tip: ask the shop assistant (bottom right) and
+          its picks appear right here.
+        </p>
       </div>
 
-      <div className="toolbar">
-        <div className="chips" role="group" aria-label="Filter by type">
-          {FILTERS.map((f) => (
-            <button
-              key={f.label}
-              className={`chip ${filter === f.label ? 'active' : ''}`}
-              onClick={() => setFilter(f.label)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <input
-          type="search"
-          className="search"
-          placeholder="Search: hockey, Saybrook, gray…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </div>
+      {chat.results && <ChatResults results={chat.results} version={chat.version} onClear={chat.clear} />}
 
-      {loading && <p className="muted">Loading products…</p>}
-      {error && <p className="error">Couldn't load products: {error}. Is the back end running on port 8000?</p>}
-      {!loading && !error && (
+      {!chat.results && (
         <>
-          <p className="muted count">
-            {shown.length} {shown.length === 1 ? 'style' : 'styles'}
-          </p>
-          <div className="grid">
-            {shown.map((p) => (
-              <ProductCard key={p.product_id} product={p} />
-            ))}
+          <div className="toolbar">
+            <div className="chips" role="group" aria-label="Filter by type">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.label}
+                  className={`chip ${filter === f.label ? 'active' : ''}`}
+                  onClick={() => setFilter(f.label)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <input
+              type="search"
+              className="search"
+              placeholder="Search: hockey, Saybrook, gray…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
           </div>
-          {shown.length === 0 && <p className="muted">No matches. Try another search, or ask our shop assistant.</p>}
+
+          {loading && <p className="muted">Loading products…</p>}
+          {error && <p className="error">Couldn't load products: {error}. Is the back end running on port 8000?</p>}
+          {!loading && !error && (
+            <>
+              <p className="muted count">
+                {shown.length} {shown.length === 1 ? 'style' : 'styles'}
+              </p>
+              <div className="grid">
+                {shown.map((p) => (
+                  <ProductCard key={p.product_id} product={p} />
+                ))}
+              </div>
+              {shown.length === 0 && <p className="muted">No matches. Try another search, or ask our shop assistant.</p>}
+            </>
+          )}
         </>
       )}
     </section>

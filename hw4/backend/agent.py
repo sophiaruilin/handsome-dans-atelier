@@ -1,7 +1,7 @@
 """PydanticAI Campus Customs shop agent, called by the /api/chat route in main.py.
 
 run_agent(message, history, product_id, user) -> ChatResponse with the reply, the product
-cards to show under it, and which tools ran.
+cards to show under it, on-page search results (when the shopper is browsing), and which tools ran.
 
 - Instructions: prompts/prompt.md (re-read each message), plus a short per-request context (the product page the
   shopper is on, and their first name if logged in).
@@ -33,8 +33,10 @@ from models import (
     CatalogueOverview,
     ChatMessage,
     ChatResponse,
+    PageResults,
     ProductInfo,
     ProductSearchResult,
+    SearchFilters,
     ShopReply,
     StockCheck,
     User,
@@ -57,6 +59,8 @@ class ShopState:
     product_id: str | None = None  # product page the shopper is viewing
     first_name: str | None = None  # set when logged in
     tools_used: list[str] = field(default_factory=list)
+    # Each search_products call and its match count, so the page can show the agent's search.
+    searches: list[tuple[SearchFilters, int]] = field(default_factory=list)
 
 
 agent = Agent(deps_type=ShopState, output_type=ShopReply)
@@ -109,13 +113,18 @@ def search_products(
     Args:
         query: keywords that must all appear in the name, description, colors or tags, e.g. "hockey" or "Saybrook".
         garment_type: e.g. "hoodie", "crewneck", "t-shirt", "quarter-zip", "jacket".
-        color: e.g. "navy", "gray", "white".
+        color: the garment's main color, e.g. "navy", "gray", "white" (ignores lettering/graphic colors).
         max_price: highest price in US dollars.
         size: only products with this size in stock, e.g. "L" or "large".
         in_stock_only: skip styles that are sold out in every size.
     """
     ctx.deps.tools_used.append("search_products")
-    return tools.search_products(query, garment_type, color, max_price, size, in_stock_only)
+    result = tools.search_products(query, garment_type, color, max_price, size, in_stock_only)
+    filters = SearchFilters(
+        query=query, garment_type=garment_type, color=color, max_price=max_price, size=size, in_stock_only=in_stock_only
+    )
+    ctx.deps.searches.append((filters, result.total_matches))
+    return result
 
 
 @agent.tool
@@ -196,9 +205,32 @@ async def run_agent(
             message_history=_history(history or []),
             usage_limits=UsageLimits(request_limit=MAX_REQUESTS),
         )
+    out = result.output
     # Cards come from the database, not the model, so prices and stock are always current.
-    cards = tools.get_products(result.output.product_ids)[:MAX_CARDS]
-    return ChatResponse(reply=result.output.reply, products=cards, tools_used=state.tools_used)
+    cards = tools.get_products(out.product_ids)[:MAX_CARDS]
+    return ChatResponse(
+        reply=out.reply,
+        products=cards,
+        page_results=_page_results(out, state, message),
+        tools_used=state.tools_used,
+    )
+
+
+def _page_results(out: ShopReply, state: ShopState, message: str) -> PageResults | None:
+    """Re-run the agent's last successful search with no result cap, for the website to show on the page."""
+    if not out.show_on_page:
+        return None
+    last = next((f for f, total in reversed(state.searches) if total > 0), None)
+    if last is None:
+        return None
+    products = tools.search_all(last)
+    return PageResults(
+        title=out.page_title or "Matches from your chat",
+        shopper_message=message,
+        filters=last,
+        total_matches=len(products),
+        products=products,
+    )
 
 
 if __name__ == "__main__":

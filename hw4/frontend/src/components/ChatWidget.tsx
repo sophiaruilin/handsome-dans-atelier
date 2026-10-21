@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import Markdown from 'react-markdown'
-import { Link, useMatch } from 'react-router-dom'
+import { Link, useLocation, useMatch, useNavigate } from 'react-router-dom'
 import { formatPrice, getChatHistory, sendChat } from '../api'
 import { useAuth } from '../auth/context'
-import type { ChatMessage, Product } from '../types'
+import { useChatResults } from '../chat/context'
+import type { ChatMessage, PageResults, Product } from '../types'
 import StockBadge from './StockBadge'
 
 const greeting = (firstName?: string): ChatMessage => ({
@@ -36,6 +37,16 @@ export default function ChatWidget() {
   const [sending, setSending] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const productId = useMatch('/products/:productId')?.params.productId
+  const chatResults = useChatResults()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+
+  // Put a search on the Products page (the cards there open the single-item page as usual).
+  function showOnPage(results: PageResults) {
+    chatResults.show(results)
+    if (pathname !== '/products') navigate('/products')
+    else window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   useEffect(() => {
     if (!user) return
@@ -58,7 +69,9 @@ export default function ChatWidget() {
     setSending(true)
     try {
       const res = await sendChat(text, history, productId)
-      setMessages((m) => [...m, { role: 'assistant', content: res.reply, products: res.products }])
+      const pageResults = res.page_results ?? undefined
+      setMessages((m) => [...m, { role: 'assistant', content: res.reply, products: res.products, pageResults }])
+      if (pageResults) showOnPage(pageResults)
     } catch (err) {
       const reason = err instanceof Error ? err.message : ''
       setMessages((m) => [
@@ -87,6 +100,12 @@ export default function ChatWidget() {
             {messages.map((m, i) => (
               <div key={i} className={`bubble ${m.role}`}>
                 {m.role === 'assistant' ? <Markdown>{m.content}</Markdown> : m.content}
+                {m.pageResults && (
+                  <button type="button" className="on-page-note" onClick={() => showOnPage(m.pageResults!)}>
+                    📍 {m.pageResults.total_matches} {m.pageResults.total_matches === 1 ? 'match' : 'matches'} showing
+                    on the page{pathname === '/products' && chatResults.results === m.pageResults ? '' : ' · view'}
+                  </button>
+                )}
                 {!!m.products?.length && (
                   <div className="chat-cards">
                     {m.products.map((p) => (

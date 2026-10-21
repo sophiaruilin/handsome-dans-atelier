@@ -214,3 +214,28 @@ h1 { font-size: clamp(1.8rem, 3.5vw, 2.6rem); margin: 0.2em 0 0.4em; }
   .detail-image { position: static; }
   .auth-form .row { flex-direction: column; }
 }
+
+/* Chat search results on the Products page (Problem 7) */
+.chat-results { margin-top: 0.5rem; }
+.chat-results-head {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;
+  background: linear-gradient(135deg, #e8f0fa, #fff); border: 1px solid #cddcee; border-left: 4px solid var(--yale-blue);
+  border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1.25rem;
+}
+.chat-results-head h2 { margin: 0.2rem 0; font-size: 1.6rem; }
+.chat-results-head p { margin: 0.2rem 0; }
+.chat-results-head .tags { margin: 0.5rem 0 0; }
+.btn-outline { background: #fff; color: var(--yale-blue); border: 1.5px solid var(--yale-blue); }
+.btn-outline:hover { background: #e6eef8; }
+.pop-in { animation: pop-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; display: flex; }
+.pop-in > .card { flex: 1; }
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .pop-in { animation: none; } }
+.on-page-note {
+  display: block; margin-top: 0.5rem; padding: 0.3rem 0.6rem; border: 0; border-radius: 999px; cursor: pointer;
+  background: #e8f0fa; color: var(--yale-blue); font: inherit; font-size: 0.8rem; font-weight: 600;
+}
+.on-page-note:hover { background: #d6e4f5; }

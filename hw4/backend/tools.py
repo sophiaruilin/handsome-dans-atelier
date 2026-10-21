@@ -10,6 +10,7 @@ import json
 import re
 import sqlite3
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
 from models import (
@@ -18,6 +19,7 @@ from models import (
     ProductInfo,
     ProductSearchResult,
     ProductSummary,
+    SearchFilters,
     SizeAvailability,
     SizeStock,
     StockCheck,
@@ -103,6 +105,37 @@ def _words(text: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", text.lower())
 
 
+# The catalogue's garment_type is free text ("pullover hoodie", "hooded sweatshirt", ...). These
+# categories group it the same way as the Products page filters, so "hoodie" finds every hooded
+# style and "t-shirt" doesn't match "sweatshirt".
+GARMENT_CATEGORIES: dict[str, Callable[[str], bool]] = {
+    "hoodie": lambda g: "hood" in g,
+    "crewneck": lambda g: "crew" in g and "t-shirt" not in g and "hood" not in g,
+    "t-shirt": lambda g: "t-shirt" in g or ("shirt" in g and "sweat" not in g),
+    "quarter-zip": lambda g: "quarter-zip" in g,
+    "jacket": lambda g: "jacket" in g or "fleece" in g,
+    "sweatshirt": lambda g: "sweatshirt" in g,
+}
+GARMENT_ALIASES = {
+    "hoodies": "hoodie", "hoody": "hoodie", "hooded": "hoodie", "hood": "hoodie", "hooded sweatshirt": "hoodie",
+    "crewnecks": "crewneck", "crew": "crewneck", "crew neck": "crewneck", "crewneck sweatshirt": "crewneck",
+    "t-shirts": "t-shirt", "tshirt": "t-shirt", "tshirts": "t-shirt", "tee": "t-shirt", "tees": "t-shirt",
+    "shirt": "t-shirt", "shirts": "t-shirt",
+    "quarter-zips": "quarter-zip", "quarter zip": "quarter-zip", "quarterzip": "quarter-zip", "1/4 zip": "quarter-zip",
+    "jackets": "jacket", "fleece": "jacket", "fleeces": "jacket",
+    "sweatshirts": "sweatshirt",
+}
+
+
+def garment_matches(garment_type: str, wanted: str) -> bool:
+    """Does a catalogue garment_type fit what the shopper asked for ("hoodies", "tee", ...)?"""
+    w = wanted.strip().lower()
+    category = GARMENT_CATEGORIES.get(GARMENT_ALIASES.get(w, w))
+    if category:
+        return category(garment_type.lower())
+    return all(_matches(word, garment_type.lower()) for word in _words(wanted))
+
+
 def _matches(word: str, haystack: str) -> bool:
     # "hoodies" should find "hoodie", "tees" should find "tee".
     return word in haystack or (len(word) > 3 and word.endswith("s") and word[:-1] in haystack)
@@ -116,7 +149,29 @@ def search_products(
     size: str = "",
     in_stock_only: bool = False,
 ) -> ProductSearchResult:
-    """Filter the catalogue and return the first MAX_RESULTS matches as summaries."""
+    """Filter the catalogue and return the first MAX_RESULTS matches as summaries (for the agent)."""
+    results, note = _search(query, garment_type, color, max_price, size, in_stock_only)
+    shown = results[:MAX_RESULTS]
+    if len(results) > len(shown):
+        note = (note + " " if note else "") + f"Showing {len(shown)} of {len(results)}; add filters to narrow down."
+    return ProductSearchResult(
+        total_matches=len(results), showing=len(shown), products=[summary(p) for p in shown], note=note
+    )
+
+
+def search_all(filters: SearchFilters) -> list[Product]:
+    """Every match for a search, as full products (for the on-page results)."""
+    return _search(**filters.model_dump())[0]
+
+
+def _search(
+    query: str = "",
+    garment_type: str = "",
+    color: str = "",
+    max_price: float | None = None,
+    size: str = "",
+    in_stock_only: bool = False,
+) -> tuple[list[Product], str]:
     shop_size = normalize_size(size) if size else None
     note = ""
     if size and not shop_size:
@@ -126,9 +181,11 @@ def search_products(
         text = " ".join([p.name, p.garment_type, p.description, *p.colors, *p.search_tags]).lower()
         if query and not all(_matches(w, text) for w in _words(query)):
             continue
-        if garment_type and not all(_matches(w, p.garment_type.lower()) for w in _words(garment_type)):
+        if garment_type and not garment_matches(p.garment_type, garment_type):
             continue
-        if color and not any(color.lower() in c.lower() for c in p.colors):
+        # colors[0] is the garment itself; the rest are lettering and graphics. "Navy crewnecks"
+        # means navy sweatshirts, not gray ones with navy lettering.
+        if color and not (p.colors and color.lower() in p.colors[0].lower()):
             continue
         if max_price is not None and p.price > max_price:
             continue
@@ -137,12 +194,9 @@ def search_products(
         if in_stock_only and p.stock_status == "sold_out":
             continue
         results.append(p)
-    shown = results[:MAX_RESULTS]
-    if len(results) > len(shown):
-        note = (note + " " if note else "") + f"Showing {len(shown)} of {len(results)}; add filters to narrow down."
-    return ProductSearchResult(
-        total_matches=len(results), showing=len(shown), products=[summary(p) for p in shown], note=note
-    )
+    # In-stock styles first, so the page and the agent lead with things the shopper can buy.
+    results.sort(key=lambda p: p.stock_status == "sold_out")
+    return results, note
 
 
 def catalogue_overview() -> CatalogueOverview:

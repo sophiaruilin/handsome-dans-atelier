@@ -162,9 +162,44 @@ class ShopReply(BaseModel):
             f"at most {MAX_CARDS}. Only ids returned by the tools. Empty if no product is relevant."
         ),
     )
+    show_on_page: bool = Field(
+        default=False,
+        description=(
+            "True when the shopper is browsing a kind of item (e.g. 'what hoodies do you have?', 'navy gifts "
+            "under $60') and you ran search_products for it: the website then shows every match of your last "
+            "search as product cards on the page. False for questions about one specific product, stock/price "
+            "checks, or anything that isn't a product search."
+        ),
+    )
+    page_title: str = Field(
+        default="",
+        description="Short heading for the on-page results when show_on_page is true, e.g. 'Navy hoodies under $70'.",
+    )
+
+
+class SearchFilters(BaseModel):
+    """The search_products arguments the agent used, so the page can show exactly that search."""
+
+    query: str = ""
+    garment_type: str = ""
+    color: str = ""
+    max_price: float | None = None
+    size: str = ""
+    in_stock_only: bool = False
+
+
+class PageResults(BaseModel):
+    """Search matches for the website to render as product cards on the page (Problem 7)."""
+
+    title: str
+    shopper_message: str = Field(description="What the shopper asked, shown under the heading")
+    filters: SearchFilters
+    total_matches: int
+    products: list[Product]  # every match, full records from the database
 
 
 class ChatResponse(BaseModel):
     reply: str
-    products: list[Product] = Field(default_factory=list)  # shown as cards under the reply
+    products: list[Product] = Field(default_factory=list)  # small cards under the reply in the chat
+    page_results: PageResults | None = None  # when set, the website shows these as cards on the page
     tools_used: list[str] = Field(default_factory=list)

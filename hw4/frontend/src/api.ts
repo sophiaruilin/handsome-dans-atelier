@@ -1,4 +1,4 @@
-import type { ChatMessage, Product, User } from './types'
+import type { ChatMessage, PageResults, Product, User } from './types'
 
 // Relative URLs: Vite proxies /api and /media to the FastAPI back end (see vite.config.ts).
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -36,7 +36,7 @@ export const joinWaitlist = (productId: string, email: string, size?: string) =>
 
 // The back end runs the PydanticAI shop agent and, for logged-in shoppers, saves the chat.
 export const sendChat = (message: string, history: ChatMessage[], productId?: string) =>
-  request<{ reply: string; products: Product[]; tools_used: string[] }>(
+  request<{ reply: string; products: Product[]; page_results: PageResults | null; tools_used: string[] }>(
     '/api/chat',
     postJson({
       message,
