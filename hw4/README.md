@@ -8,6 +8,38 @@
 
 > The product database and product photos (the **data pack**) are **not** in this repo. See [Place the data pack](#1-place-the-data-pack) below.
 
+**🔎 Live-site check (opens as a web page):** https://sophiaruilin.github.io/handsome-dans-atelier/hw4/output/app_check.html
+
+---
+
+## A peek at the shop
+
+GitHub can't run the shop (it needs the back end, the data pack and an API key), so here's what you'll see once it's running locally. Every screenshot was taken from the running app.
+
+<table>
+  <tr>
+    <td width="50%"><img src="output/screenshots/p10/01-home-hero.jpg" alt="Home page: Campus Customs masthead with Handsome Dan under the title, and navy-and-white engraving tiles of Yale landmarks" /><br /><b>Home:</b> Handsome Dan under the title, and Victorian engravings of Yale landmarks on a campus toile wallpaper.</td>
+    <td width="50%"><img src="output/app_check_images/1-inventory-chat.jpg" alt="Chat with Handsome Dan: the Saybrook College Crewneck is $58.00, L has just 2 left, XXL is sold out" /><br /><b>Chat with Handsome Dan:</b> prices and stock come straight from the database ($58.00, L: 2 left, XXL sold out).</td>
+  </tr>
+  <tr>
+    <td><img src="output/app_check_images/2a-hoodie-search-cards.jpg" alt="Asking 'What hoodies do you have?' fills the Shop page with 27 hoodie cards" /><br /><b>Chat search fills the page:</b> "What hoodies do you have?" puts all 27 hoodies on the Shop page as cards.</td>
+    <td><img src="output/screenshots/p10/03-shop-filters-saybrook.jpg" alt="Shop filters: style, fit, color and affiliation with college shields; Saybrook selected" /><br /><b>Filters:</b> style, fit, color and affiliation (residential colleges and schools with shields, varsity teams, family).</td>
+  </tr>
+  <tr>
+    <td><img src="output/screenshots/p10/04-product-dan-note-add-to-bag.jpg" alt="Product page with Handsome Dan's handwritten pick note, size buttons with stock counts and an Add to bag button" /><br /><b>Product page:</b> Dan's handwritten pick, live stock on every size button, and <b>Add to bag</b>.</td>
+    <td><img src="output/screenshots/p10/05-dan-jumps-add-to-bag.jpg" alt="Handsome Dan jumping with a 'Woof!' after an item is added to the bag" /><br /><b>Add to bag:</b> Handsome Dan jumps for joy.</td>
+  </tr>
+  <tr>
+    <td><img src="output/screenshots/p10/07-checkout-cartwheel.jpg" alt="Handsome Dan cartwheeling across the screen with a dog biscuit, confetti, and 'Boola Boola! Your order is reserved!'" /><br /><b>Reserve for pickup:</b> Dan cartwheels across the screen with a biscuit.</td>
+    <td><img src="output/screenshots/p10/11-telegram-receipt.jpg" alt="Order confirmation styled as a Victorian telegram with typed tape strips, STOPs and a RESERVED stamp" /><br /><b>Receipt:</b> a Victorian telegram from the Campus Customs Telegraph Co.</td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="output/screenshots/p10/10-seasonal-dan.jpg" alt="Seasonal Handsome Dan outfits: fall scarf, winter snow, spring boater, summer sunglasses, Game-week Beat Harvard pennant" /><br /><b>Seasonal Dan:</b> his outfit follows the calendar (fall, winter, spring, summer, and a BEAT HARVARD pennant for The Game week).</td>
+  </tr>
+</table>
+
+More screenshots and the reasoning behind each feature: [`output/design.md`](output/design.md) (storefront), [`output/usability.md`](output/usability.md) (Problem 9) and the [live-site check](https://sophiaruilin.github.io/handsome-dans-atelier/hw4/output/app_check.html) (Problem 11).
+
 ---
 
 ## File layout
@@ -149,7 +181,7 @@ npm run lint               # oxlint
 | [`output/harness.md`](output/harness.md) | **Start here.** Architecture, how to run it, specs (model, loop limits, result caps), the 7 agent tools, every field in `models.py` and why, safety rules, audit trail, and the build log for every problem |
 | [`output/usability.md`](output/usability.md) | Problem 9: 4 front-end and 4 agent/back-end improvements, with evidence |
 | [`output/design.md`](output/design.md) | Problem 10: the storefront design, Handsome Dan, Seasonal Dan, the telegram receipt |
-| [`output/app_check.html`](output/app_check.html) | Problem 11: live-site checks with screenshots (download and double-click to open) |
+| [`output/app_check.html`](https://sophiaruilin.github.io/handsome-dans-atelier/hw4/output/app_check.html) | Problem 11: live-site checks with screenshots. Opens as a web page on GitHub Pages, or download it and double-click ([source](output/app_check.html)) |
 | [`output/audit_trail.json`](output/audit_trail.json) | Problem 12: append-only log of agent-loop activity (time, tool, short args and results, stop reason) |
 | [`backend/prompts/prompt.md`](backend/prompts/prompt.md) | Handsome Dan's instructions and safety rules |
 | [`AI_prompts.md`](AI_prompts.md) | The prompts used for each problem |
