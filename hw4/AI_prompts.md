@@ -246,3 +246,23 @@ Template for each problem (copy for each new problem):
 > finish output/hraness.md so it is clear how system works.
 >
 > model fields in models.py an why you chose them. tools and abilities. safety rules. specs (loop limits, result caps, models, how to run front + back)
+
+## Problem 13 — Push to GitHub and submit the URL
+
+**Prompt (my own words):**
+
+> problem 13: push to github and submit the url
+>
+> put code in folder named hw4 and push it to a public github repository. on canvas, submit the repo URL (the link graders can open and clone). i do NOT upload the zip for this homework this time. do not put my real .env, campus_customs.db or product images in the github repo. use .gitignore. include .env.example with placeholders only.
+>
+> ensure the bottom insutrctions and files under those files mentioned are there.
+>
+> expected file layout shared, the screenshot got a little cutoff so including other end too
+>
+> *(screenshots: expected hw4/ file layout, the local-only data pack, "the agent itself is four files under backend/", "README.md should explain how to run the front end and back end after placing the data pack")*
+
+**Follow-up prompt:**
+
+> handsom dan's atelier
+
+**What was lacking before:** The coursework repo was private and its hw4 history contained the database, product images and lecture slides, and hw4 had no README, top-level requirements.txt or .env.example. So a clean public repo (handsome-dans-atelier) was built with those files stripped from every commit.
