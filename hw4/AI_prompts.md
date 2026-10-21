@@ -219,3 +219,18 @@ Template for each problem (copy for each new problem):
 > i love seasonal dan and vicotrian telegram receipt. we can cap it there for cuteness
 
 **What was lacking before:** The pastel Trader Joe's tile colours clashed with the navy-and-white toile look Sophia wanted, and two of the suggested extras (Seasonal Dan and the telegram receipt) weren't built yet.
+
+## Problem 11 — Site testing (app check)
+
+**Prompt (my own words):**
+
+> Problem 11: site testing (app check)
+>
+> test the live site and documetn it in output/app_check.html (a page you can double-click open). include clear screenshots and short captions for:
+>
+> 1. chat checking inventory level of item (honest stock / price from the database)
+>
+> 2. dynamic search-result cards appearing after a category question (e.g. hoodies)
+> 3. one of the usability features you added in problem 9... even check 2 or 3 to be sure
+>
+> make the html easy to grade - heading for each check, screenshot, and 1-2 sentences on what screenshot proves. put the screenshot image files in output/app_check_images/ and link them from app_check.html, with relative paths (for example app_check_images/inventory.png)

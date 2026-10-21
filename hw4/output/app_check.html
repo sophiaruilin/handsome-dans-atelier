@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Campus Customs: live site check (Problem 11)</title>
+<style>
+  :root { --navy: #00356b; --cream: #f4f2ec; --ivory: #fffdf7; --brass: #b08d57; --green: #1e7b3c; --ink: #1d2433; --muted: #5d6675; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Georgia, 'Times New Roman', serif; color: var(--ink); background: var(--cream); line-height: 1.55; }
+  header { background: var(--navy); color: #fff; padding: 1.6rem 1rem 1.3rem; text-align: center; border-bottom: 4px double var(--brass); }
+  header h1 { margin: 0; font-size: 2rem; }
+  header p { margin: 0.35rem 0 0; color: #dbe6f3; font-family: system-ui, sans-serif; font-size: 0.95rem; }
+  main { max-width: 1040px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+  h2 { color: var(--navy); margin: 0 0 0.3rem; font-size: 1.5rem; }
+  h3 { color: var(--navy); margin: 1.4rem 0 0.4rem; font-size: 1.15rem; }
+  .intro, .check { background: var(--ivory); border: 1px solid #dcc8a0; box-shadow: 0 0 0 4px var(--ivory), 0 0 0 5px #dcc8a0; padding: 1.2rem 1.4rem; margin: 0 0 2rem; }
+  .intro p, .check p { font-family: system-ui, sans-serif; font-size: 0.97rem; margin: 0.4rem 0; }
+  table { border-collapse: collapse; width: 100%; font-family: system-ui, sans-serif; font-size: 0.92rem; margin-top: 0.6rem; }
+  th, td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid #e4dccb; vertical-align: top; }
+  th { background: #eef2f8; color: var(--navy); }
+  .pass { color: #fff; background: var(--green); border-radius: 999px; padding: 0.05rem 0.6rem; font-weight: 700; font-size: 0.8rem; white-space: nowrap; }
+  .eyebrow { font-family: system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; color: #8c6c3c; margin: 0; }
+  figure { margin: 0.8rem 0 0; }
+  figure img { width: 100%; height: auto; display: block; border: 1px solid #c9d6e6; box-shadow: 0 4px 14px rgb(0 0 0 / 0.1); }
+  figcaption { font-family: system-ui, sans-serif; font-size: 0.95rem; margin-top: 0.55rem; }
+  figcaption strong { color: var(--navy); }
+  .db { font-family: Consolas, 'Courier New', monospace; font-size: 0.85rem; background: #eef2f8; border-left: 3px solid var(--navy); padding: 0.4rem 0.7rem; margin-top: 0.5rem; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  a { color: #286dc0; }
+  footer { text-align: center; font-family: system-ui, sans-serif; color: var(--muted); font-size: 0.85rem; padding-bottom: 2rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Campus Customs: live site check</h1>
+  <p>HW 4 · Problem 11 · Tested on the running app (React front end + FastAPI / PydanticAI back end) · October 20, 2026</p>
+</header>
+
+<main>
+  <section class="intro">
+    <h2>Summary</h2>
+    <p>Every screenshot below was taken from the live site at <code>http://localhost:5175</code> as a guest, with the back end running <code>uvicorn main:app --reload --port 8000</code> from <code>backend/</code>. Each number in the chat or on the page was checked against <code>data/campus_customs.db</code> with a direct SQL query, shown in the grey box under each screenshot. The server log and browser console showed <strong>no errors</strong> during the run. Click any screenshot to open it full size.</p>
+    <table>
+      <thead><tr><th>#</th><th>Check</th><th>What was verified</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Chat checks inventory and price</td><td>Price, a low-stock size and a sold-out size all match the database</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>2a</td><td>Category question puts cards on the page</td><td>"What hoodies do you have?" shows all 27 hooded styles as cards</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>2b</td><td>Chat-placed cards still open the product page</td><td>Large image, full description, price and stock by size, matching the database</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>3a</td><td>Problem 9: "My size" filter + sort</td><td>77 styles in stock in XL; per-size stock badges; price sort</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>3b–d</td><td>Problem 9: "Ask about this item", similar styles and quick replies</td><td>Sold-out size leads to in-stock alternatives; tapping a follow-up button sends it</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>3e–f</td><td>Problem 9: You might also like, Recently viewed and Saved items</td><td>Strips appear; the ♥ counter updates; Saved page shows live stock</td><td><span class="pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 1 -->
+  <section class="check" id="check-1">
+    <p class="eyebrow">Check 1</p>
+    <h2>Chat checks the inventory level and price of an item</h2>
+    <p><strong>Steps:</strong> On the Home page, open the chat and ask <em>"Is the Saybrook College Crewneck in stock in L and XXL? How much is it?"</em></p>
+    <figure>
+      <a href="app_check_images/1-inventory-chat.jpg"><img src="app_check_images/1-inventory-chat.jpg" alt="Handsome Dan answering: the Saybrook College Crewneck is $58.00, L has just 2 left and is selling fast, XXL is sold out" /></a>
+      <figcaption><strong>What this proves:</strong> the chat answers with real database values, not guesses: <strong>$58.00</strong>, <strong>L: just 2 left (selling fast)</strong> and <strong>XXL: sold out</strong>, plus the sizes still in stock. The agent looked these up with its tools (<code>search_products</code> → <code>get_product_info</code>), and it offered an in-stock alternative in XXL (Grace Hopper College Crewneck, $58.00, 15 left in XXL).</figcaption>
+    </figure>
+    <div class="db">SQL: saybrook-college-crewneck → price 58.0 · stock {XS: 15, S: 15, M: 15, L: 2, XL: 15, XXL: 0}<br />grace-hopper-college-crewneck → price 58.0 · XXL: 15</div>
+  </section>
+
+  <!-- 2 -->
+  <section class="check" id="check-2">
+    <p class="eyebrow">Check 2</p>
+    <h2>Dynamic search-result cards appear after a category question</h2>
+    <p><strong>Steps:</strong> In the same chat, ask <em>"What hoodies do you have?"</em></p>
+    <h3>2a. The page fills with matching product cards</h3>
+    <figure>
+      <a href="app_check_images/2a-hoodie-search-cards.jpg"><img src="app_check_images/2a-hoodie-search-cards.jpg" alt="Products page showing 'Yale Hoodies, 27 matches' with hoodie product cards next to the chat" /></a>
+      <figcaption><strong>What this proves:</strong> the agent's structured search results (<code>ChatResponse.page_results</code>) reached the website. The site moved to the Products page and rendered a <strong>"From your chat" section titled "Yale Hoodies" with all 27 matches</strong> as product cards (image, name, short description, price, stock), while the chat says "📍 27 matches showing on the page".</figcaption>
+    </figure>
+    <div class="db">SQL: SELECT count(*) FROM catalogue WHERE lower(garment_type) LIKE '%hood%' → 27</div>
+
+    <h3>2b. A card the chat put on the page still opens the single-item page</h3>
+    <figure>
+      <a href="app_check_images/2b-card-opens-detail.jpg"><img src="app_check_images/2b-card-opens-detail.jpg" alt="Champion Full Zip Hood product page with large image, $88.00, description, colors and stock for each size" /></a>
+      <figcaption><strong>What this proves:</strong> clicking the <em>Champion Full Zip Hood</em> card from the chat results opened <code>/products/champion-full-zip-hood</code>, with the large image, full description, colors, <strong>$88.00</strong> and stock for every size (XS–L 5 left each in red "selling fast", XL 8, XXL 12), all matching the database.</figcaption>
+    </figure>
+    <div class="db">SQL: champion-full-zip-hood → price 88.0 · stock {XS: 5, S: 5, M: 5, L: 5, XL: 8, XXL: 12}</div>
+  </section>
+
+  <!-- 3 -->
+  <section class="check" id="check-3">
+    <p class="eyebrow">Check 3</p>
+    <h2>Usability features from Problem 9</h2>
+    <p>Problem 9 added four front-end and four agent/back-end improvements (see <code>output/usability.md</code>). Five of them are checked here.</p>
+
+    <h3>3a. "My size" filter, per-size stock badges and sorting</h3>
+    <figure>
+      <a href="app_check_images/3a-my-size-and-sort.jpg"><img src="app_check_images/3a-my-size-and-sort.jpg" alt="Products page with My size set to XL, '77 styles in stock in size XL', XL stock badges on cards, sorted by price low to high" /></a>
+      <figcaption><strong>What this proves:</strong> choosing <strong>XL</strong> hides everything that's sold out in XL ("<strong>77 styles in stock in size XL</strong>"), and each card shows a badge such as "XL: 25 left" (green) or "XL: 2 left" (red, selling fast). "Price: low to high" starts at the shop's cheapest price, $32.00.</figcaption>
+    </figure>
+    <div class="db">SQL: SELECT count(*) FROM inventory WHERE size='XL' AND quantity&gt;0 → 77 · SELECT min(price) FROM catalogue → 32.0</div>
+
+    <h3>3b. "Ask about this item" on a sold-out size, plus the new <code>find_similar_products</code> tool</h3>
+    <figure>
+      <a href="app_check_images/3b-ask-about-sold-out-size.jpg"><img src="app_check_images/3b-ask-about-sold-out-size.jpg" alt="Champion Reverse Weave Crewneck with L sold out; chat opened with 'Size L is sold out. What similar styles do you have in L?' and three alternatives" /></a>
+      <figcaption><strong>What this proves:</strong> on the Champion Reverse Weave Crewneck, choosing the sold-out size <strong>L</strong> and clicking <em>💬 Ask about this item</em> opened the chat with the question ready to send. The agent confirmed L is sold out (M and XL still in stock) and suggested three similar crewnecks that <strong>are in stock in L</strong>, all $58.00.</figcaption>
+    </figure>
+    <div class="db">SQL: champion-reverse-weave-crewneck → {L: 0, M: 12, XL: 12} · champion-mens-triumph-raglan-crew L: 12 · yale-sports-crewneck-volleyball L: 25 · davenport-college-crewneck L: 12 (all $58.00)</div>
+
+    <div class="grid2">
+      <div>
+        <h3>3c. Agent-written quick-reply buttons</h3>
+        <figure>
+          <a href="app_check_images/3c-quick-replies.jpg"><img src="app_check_images/3c-quick-replies.jpg" alt="Chat showing product cards and follow-up buttons 'Tell me about the Triumph crew' and 'How many L Triumph crews remain?'" /></a>
+          <figcaption><strong>What this proves:</strong> under the reply, Handsome Dan suggests one-tap follow-ups written as the shopper ("How many L Triumph crews remain?"), next to live product cards.</figcaption>
+        </figure>
+      </div>
+      <div>
+        <h3>3d. Tapping a quick reply sends it</h3>
+        <figure>
+          <a href="app_check_images/3d-quick-reply-answered.jpg"><img src="app_check_images/3d-quick-reply-answered.jpg" alt="The tapped question 'How many L Triumph crews remain?' answered with 'There are 12 left in L'" /></a>
+          <figcaption><strong>What this proves:</strong> one tap sent the question, and the answer, "<strong>12 left in L</strong>", matches the database. It also explains how to reserve one (Add to bag).</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <h3>3e. "You might also like" and "Recently viewed"</h3>
+        <figure>
+          <a href="app_check_images/3e-similar-and-recently-viewed.jpg"><img src="app_check_images/3e-similar-and-recently-viewed.jpg" alt="Product page strips: You might also like (four in-stock crewnecks) and Recently viewed (Champion Full Zip Hood); nav shows Saved 1" /></a>
+          <figcaption><strong>What this proves:</strong> every product page now has a next step: four in-stock similar crewnecks (same logic as the agent's tool) and the item viewed earlier. The nav's <strong>♥ Saved</strong> counter shows 1 after saving this item.</figcaption>
+        </figure>
+      </div>
+      <div>
+        <h3>3f. Saved items page</h3>
+        <figure>
+          <a href="app_check_images/3f-saved-items.jpg"><img src="app_check_images/3f-saved-items.jpg" alt="Saved items page listing the Champion Reverse Weave Crewneck with an 'L sold out' badge" /></a>
+          <figcaption><strong>What this proves:</strong> the saved crewneck appears on <code>/saved</code> with <strong>live</strong> price and stock, including the "L sold out" badge for the shopper's remembered size.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="intro">
+    <h2>Other checks during this run</h2>
+    <p>The FastAPI server log (<code>uvicorn</code>) showed <strong>no errors</strong>, and the browser console showed <strong>no errors</strong>. The back end's automated tests also pass: <code>python -m pytest -q</code> in <code>backend/</code> → <strong>37 passed</strong>. They check every product's price and stock by size against raw SQL, plus the search filters, the price fact-checker, card-number masking, waitlist rules and pickup orders.</p>
+  </section>
+</main>
+<footer>Campus Customs · Yale Bulldog Blue · 57 Broadway, New Haven · HW 4, Problem 11</footer>
+</body>
+</html>
