@@ -4,14 +4,11 @@ import { formatPrice, reserveOrder } from '../api'
 import { useAuth } from '../auth/context'
 import { useBag } from '../cart/context'
 import Dan from '../components/Dan'
+import TelegramReceipt from '../components/TelegramReceipt'
 import { danDo } from '../dan/danBus'
 import type { Order } from '../types'
 
 const GIFT_NOTE_MAX = 240
-
-function pickupDate(iso: string) {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
-}
 
 export default function Bag() {
   const bag = useBag()
@@ -54,40 +51,7 @@ export default function Bag() {
   if (order) {
     return (
       <section className="page">
-        <div className="receipt">
-          <p className="eyebrow">Reservation confirmed</p>
-          <h1>Boola Boola, {order.name.split(' ')[0]}!</h1>
-          <p className="lead">
-            Order <strong>{order.order_number}</strong> is set aside for you at <strong>57 Broadway, New Haven</strong>. Pick it
-            up and pay in store by <strong>{pickupDate(order.pickup_by)}</strong>.
-          </p>
-          <ul className="receipt-items">
-            {order.items.map((i) => (
-              <li key={`${i.product_id}-${i.size}`}>
-                <img src={i.image_url} alt="" />
-                <span>
-                  {i.quantity} × {i.name} <small>size {i.size}</small>
-                </span>
-                <strong>{formatPrice(i.unit_price * i.quantity)}</strong>
-              </li>
-            ))}
-          </ul>
-          <p className="receipt-total">
-            Subtotal <strong>{formatPrice(order.subtotal)}</strong>
-          </p>
-          {order.gift_wrap && (
-            <div className="gift-card-preview">
-              <p className="gift-card-label">Wrapped in Campus Customs toile, with your card:</p>
-              <p className="handwritten">{order.gift_note || 'Boola Boola!'}</p>
-            </div>
-          )}
-          <p className="muted">
-            A confirmation is on its way to {order.email}. Handsome Dan will keep an eye on it until you arrive.
-          </p>
-          <Link to="/products" className="btn">
-            Keep shopping
-          </Link>
-        </div>
+        <TelegramReceipt order={order} />
       </section>
     )
   }

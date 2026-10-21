@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { useSeason, type Season } from '../dan/season'
 
 const INK = '#0b2a52'
 const NAVY = '#00356b'
@@ -11,12 +12,23 @@ interface Props {
   bone?: boolean // a dog biscuit in his mouth (checkout cartwheel)
   className?: string
   title?: string
+  season?: Season // defaults to today's season (or the footer preview)
 }
 
 // Handsome Dan, the Campus Customs mascot: a Victorian cartoon bulldog in a top hat, monocle,
 // polka-dot bow tie and Yale sweater. Original drawing, engraved-ink outlines like the wallpaper.
-export default function Dan({ size = 120, bone = false, className, title = 'Handsome Dan, the Campus Customs bulldog' }: Props) {
+export default function Dan({
+  size = 120,
+  bone = false,
+  className,
+  title = 'Handsome Dan, the Campus Customs bulldog',
+  season: seasonProp,
+}: Props) {
   const id = useId().replace(/:/g, '')
+  const today = useSeason().season
+  const season = seasonProp ?? today
+  const scarf = season === 'fall' || season === 'winter' || season === 'game'
+  const boater = season === 'spring' || season === 'summer'
   return (
     <svg
       className={className}
@@ -33,6 +45,10 @@ export default function Dan({ size = 120, bone = false, className, title = 'Hand
         <pattern id={`dots${id}`} width="6" height="6" patternUnits="userSpaceOnUse">
           <rect width="6" height="6" fill="#286dc0" />
           <circle cx="3" cy="3" r="1.1" fill={CREAM} />
+        </pattern>
+        <pattern id={`stripes${id}`} width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(70)">
+          <rect width="12" height="12" fill={NAVY} />
+          <rect width="5" height="12" fill={CREAM} />
         </pattern>
         <clipPath id={`head${id}`}>
           <path d="M110 56C158 56 182 80 182 108C182 136 162 154 136 158H84C58 154 38 136 38 108C38 80 62 56 110 56Z" />
@@ -84,8 +100,12 @@ export default function Dan({ size = 120, bone = false, className, title = 'Hand
         <circle cx="134.5" cy="92.5" r="2" fill={CREAM} stroke="none" />
 
         {/* monocle on a brass chain */}
-        <circle cx="132" cy="95" r="13" fill={CREAM} fillOpacity="0.25" stroke={BRASS} strokeWidth="2.6" />
-        <path d="M144 101Q160 124 150 152" stroke={BRASS} strokeWidth="1.2" strokeDasharray="2 2.5" fill="none" />
+        {season !== 'summer' && (
+          <>
+            <circle cx="132" cy="95" r="13" fill={CREAM} fillOpacity="0.25" stroke={BRASS} strokeWidth="2.6" />
+            <path d="M144 101Q160 124 150 152" stroke={BRASS} strokeWidth="1.2" strokeDasharray="2 2.5" fill="none" />
+          </>
+        )}
 
         {/* muzzle, nose and that famous underbite */}
         <path d="M80 116C80 102 95 100 110 102C125 100 140 102 140 116C140 134 126 142 110 142C94 142 80 134 80 116Z" fill={CREAM} />
@@ -112,13 +132,91 @@ export default function Dan({ size = 120, bone = false, className, title = 'Hand
           </g>
         )}
 
-        {/* Victorian top hat, at a jaunty angle */}
-        <g transform="rotate(-10 110 54)">
-          <path d="M80 54L84 12Q110 5 136 12L140 54Z" fill={NAVY} />
-          <path d="M81 45H139L140 54H80Z" fill={BRASS} />
-          <path d="M91 16L88 42" stroke="#4a77b8" strokeWidth="2" fill="none" />
-          <ellipse cx="110" cy="56" rx="45" ry="8" fill={NAVY} />
-        </g>
+        {/* Seasonal Dan: striped Yale scarf (fall, winter, The Game) */}
+        {scarf && (
+          <g>
+            <path d="M64 146Q110 170 156 146L158 160Q110 186 62 160Z" fill={`url(#stripes${id})`} />
+            <path d="M74 158L64 204L82 207L90 162Z" fill={`url(#stripes${id})`} />
+            <path d="M66 205L64 213M71 206L70 214M76 206L76 214M81 207L82 215" strokeWidth="1.4" />
+          </g>
+        )}
+
+        {/* Spring: a daisy boutonniere */}
+        {season === 'spring' && (
+          <g transform="translate(80 178)" strokeWidth="1.2">
+            {[0, 60, 120, 180, 240, 300].map((a) => (
+              <ellipse key={a} cx="0" cy="-7" rx="3.6" ry="6.5" fill={CREAM} transform={`rotate(${a})`} />
+            ))}
+            <circle r="3.6" fill={BRASS} />
+          </g>
+        )}
+
+        {/* Summer: round navy sunglasses */}
+        {season === 'summer' && (
+          <g strokeWidth="2">
+            <circle cx="88" cy="95" r="11" fill={NAVY} />
+            <circle cx="132" cy="95" r="11" fill={NAVY} />
+            <path d="M99 94Q110 89 121 94M77 92L58 86M143 92L162 86" fill="none" />
+            <path d="M82 90Q86 87 90 88M126 90Q130 87 134 88" stroke={CREAM} strokeWidth="1.6" fill="none" />
+          </g>
+        )}
+
+        {/* The Game: a BEAT HARVARD pennant */}
+        {season === 'game' && (
+          <g>
+            <path d="M184 228L200 112" strokeWidth="3" />
+            <path d="M199 114L146 128L196 144Z" fill={NAVY} />
+            <text x="183" y="132" textAnchor="middle" transform="rotate(10 183 132)" fontFamily="'Playfair Display', Georgia, serif" fontWeight="900" fontSize="9" fill={CREAM} stroke="none">
+              BEAT
+            </text>
+            <text x="181" y="141" textAnchor="middle" transform="rotate(10 181 141)" fontFamily="'Playfair Display', Georgia, serif" fontWeight="900" fontSize="7" fill={CREAM} stroke="none">
+              HARVARD
+            </text>
+            <ellipse cx="184" cy="226" rx="10" ry="8" fill={CREAM} />
+          </g>
+        )}
+
+        {/* Hat: a Victorian top hat at a jaunty angle, or a straw boater in spring and summer */}
+        {boater ? (
+          <g transform="rotate(-8 110 54)">
+            <ellipse cx="110" cy="54" rx="54" ry="10" fill="#ecd9a8" />
+            <path d="M80 54V32Q110 26 140 32V54Z" fill="#ecd9a8" />
+            <ellipse cx="110" cy="32" rx="30" ry="5" fill="#f3e6c2" />
+            <path d="M80 42Q110 37 140 42V51Q110 46 80 51Z" fill={NAVY} />
+            <path d="M64 57Q110 66 156 57M70 51Q110 59 150 51" stroke={BRASS} strokeWidth="1" fill="none" />
+          </g>
+        ) : (
+          <g transform="rotate(-10 110 54)">
+            <path d="M80 54L84 12Q110 5 136 12L140 54Z" fill={NAVY} />
+            <path d="M81 45H139L140 54H80Z" fill={BRASS} />
+            <path d="M91 16L88 42" stroke="#4a77b8" strokeWidth="2" fill="none" />
+            <ellipse cx="110" cy="56" rx="45" ry="8" fill={NAVY} />
+            {season === 'winter' && <path d="M83 14Q96 2 110 8Q124 2 137 13Q132 21 110 17Q90 22 83 14Z" fill={CREAM} />}
+          </g>
+        )}
+
+        {/* Fall: a brass elm leaf drifting past */}
+        {season === 'fall' && (
+          <g strokeWidth="1.3">
+            <path d="M188 30Q204 34 200 50Q186 48 188 30Z" fill={BRASS} />
+            <path d="M188 30L199 49" fill="none" />
+            <path d="M22 118Q30 104 42 112Q34 126 22 118Z" fill={BRASS} />
+          </g>
+        )}
+
+        {/* Winter: snowflakes */}
+        {season === 'winter' && (
+          <g strokeWidth="1.4">
+            {[
+              [24, 44],
+              [196, 96],
+              [20, 168],
+              [200, 40],
+            ].map(([x, y]) => (
+              <path key={`${x}-${y}`} d={`M${x} ${y - 6}V${y + 6}M${x - 6} ${y}H${x + 6}M${x - 4} ${y - 4}L${x + 4} ${y + 4}M${x - 4} ${y + 4}L${x + 4} ${y - 4}`} />
+            ))}
+          </g>
+        )}
       </g>
     </svg>
   )

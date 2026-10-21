@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth/context'
 import ChatWidget from './components/ChatWidget'
 import DanCartwheel from './components/DanCartwheel'
+import SeasonSwitcher from './components/SeasonSwitcher'
 import Toast from './components/Toast'
 import NavBar from './components/NavBar'
 import About from './pages/About'
@@ -37,6 +38,7 @@ export default function App() {
         <p className="footer-name">Yale Bulldog Blue by Campus Customs</p>
         <p>57 Broadway, New Haven, CT 06511 · Reserve online, pick up in store</p>
         <p className="muted">Officially licensed Yale merchandise · Lux et Veritas, and a really good hoodie.</p>
+        <SeasonSwitcher />
       </footer>
       <Toast />
       <DanCartwheel />

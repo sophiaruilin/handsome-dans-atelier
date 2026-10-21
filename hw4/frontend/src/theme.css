@@ -370,3 +370,83 @@ a { color: var(--yale-blue-light); }
   .awning { position: static; }
   .chat-toggle { width: 64px; height: 64px; }
 }
+
+/* ---------- Navy-and-white toile palette (replaces the pastel tiles) ---------- */
+.tile { border: 1px solid #c9d6e6; }
+.tile.ivory { background: var(--ivory); box-shadow: inset 0 0 0 5px var(--ivory), inset 0 0 0 6px #b9c9dd; }
+.tile.toile {
+  background: #dfe7f0 url('/art/toile.svg') 0 0 / 420px;
+  background-blend-mode: soft-light;
+  box-shadow: inset 0 0 0 5px #dfe7f0, inset 0 0 0 6px #9fb6d3;
+}
+.tile.toile img { background: rgb(223 231 240 / 0.85); border-radius: 50%; padding: 6px; }
+.tile.navy { background: var(--yale-blue); border-color: var(--yale-blue-dark); box-shadow: inset 0 0 0 5px var(--yale-blue), inset 0 0 0 6px rgb(255 253 247 / 0.5); }
+.tile.navy img { filter: brightness(0) invert(1); opacity: 0.95; }
+.tile.navy figcaption { color: #e9eef6; }
+.toile-swatch::after {
+  background: linear-gradient(90deg, transparent 42%, var(--yale-blue) 42% 58%, transparent 58%),
+    linear-gradient(transparent 42%, var(--yale-blue) 42% 58%, transparent 58%);
+}
+.tile.toile { background: linear-gradient(rgb(223 231 240 / 0.82), rgb(223 231 240 / 0.82)), url('/art/toile.svg') 0 0 / 420px; background-blend-mode: normal; }
+.tile.toile img { background: none; padding: 0; }
+
+/* Off-white ground like the floral toile (cooler and whiter than the earlier beige). */
+:root { --cream: #f4f2ec; --paper: #fcfbf7; --line: #dfe3ea; }
+body { background-image: linear-gradient(rgb(244 242 236 / 0.8), rgb(244 242 236 / 0.8)), url('/art/toile.svg'); }
+
+/* Seasonal Dan */
+.season-caption { font-family: var(--fell); font-size: 0.85rem; color: var(--brass-dark); margin-top: 0.1rem; }
+.wardrobe { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.4rem; margin-top: 0.9rem; font-family: var(--fell); color: #c9d6e6; }
+.wardrobe button {
+  background: transparent; color: #e9eef6; border: 1px solid rgb(255 255 255 / 0.35); border-radius: 999px; padding: 0.15rem 0.7rem;
+  font-family: var(--fell); font-size: 0.9rem; cursor: pointer;
+}
+.wardrobe button:hover { border-color: var(--brass); }
+.wardrobe button.active { background: var(--brass); border-color: var(--brass); color: #1b1408; }
+
+/* ---------- Victorian telegram receipt ---------- */
+.telegram-wrap { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 1.2rem; }
+.telegram {
+  position: relative; width: 100%; background: #f7f0dc; color: #1d2433; padding: 1.6rem 1.8rem 1.2rem;
+  border: 1px solid #d8c9a0; box-shadow: 0 10px 28px rgb(29 36 51 / 0.18);
+  /* perforated top and bottom edges */
+  -webkit-mask: radial-gradient(circle 5px at 50% 0, transparent 98%, #000) 0 0 / 16px 51% repeat-x,
+    radial-gradient(circle 5px at 50% 100%, transparent 98%, #000) 0 100% / 16px 51% repeat-x;
+  mask: radial-gradient(circle 5px at 50% 0, transparent 98%, #000) 0 0 / 16px 51% repeat-x,
+    radial-gradient(circle 5px at 50% 100%, transparent 98%, #000) 0 100% / 16px 51% repeat-x;
+  animation: telegram-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes telegram-in { from { opacity: 0; transform: translateY(24px) rotate(-1.5deg); } to { opacity: 1; transform: rotate(-0.4deg); } }
+.telegram-head { display: flex; align-items: center; gap: 0.9rem; border-bottom: 3px double var(--yale-blue); padding-bottom: 0.6rem; }
+.telegram-seal { width: 62px; height: 62px; border-radius: 50%; border: 2px solid var(--yale-blue); background: var(--ivory); display: grid; place-items: center; overflow: hidden; flex-shrink: 0; }
+.telegram-seal svg { margin-top: 8px; }
+.telegram-company { margin: 0; font-family: var(--serif); font-weight: 900; font-size: clamp(1.3rem, 3.4vw, 1.9rem); color: var(--yale-blue); letter-spacing: 0.02em; text-transform: uppercase; }
+.telegram-sub { margin: 0; font-family: var(--fell); color: var(--brass-dark); }
+.telegram-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 0.6rem 0 1rem; border: 1px solid #cdbb8c; }
+.telegram-meta div { padding: 0.3rem 0.5rem; border-right: 1px solid #cdbb8c; }
+.telegram-meta div:last-child { border-right: 0; }
+.telegram-meta dt { font-family: var(--fell); font-size: 0.75rem; color: var(--muted); }
+.telegram-meta dd { margin: 0; font-family: 'Special Elite', 'Courier New', monospace; font-size: 0.92rem; }
+.telegram-body { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+.tape {
+  margin: 0; font-family: 'Special Elite', 'Courier New', monospace; font-size: 1.02rem; letter-spacing: 0.04em;
+  background: #fffdf2; padding: 0.15rem 0.6rem; box-shadow: 0 1px 1px rgb(0 0 0 / 0.08); border-left: 2px solid #e6dcc0; border-right: 2px solid #e6dcc0;
+}
+.telegram-items { list-style: none; padding: 0; margin: 0.4rem 0; width: 100%; display: flex; flex-direction: column; gap: 0.3rem; }
+.telegram-items .tape { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.9rem; }
+.telegram-items .total { font-weight: 700; border-top: 1px dashed #cdbb8c; }
+.signature { margin-top: 0.4rem; align-self: flex-end; }
+.telegram-stamp {
+  position: absolute; right: 1.4rem; top: 5.2rem; width: 104px; height: 104px; border-radius: 50%; border: 3px double #00356b;
+  color: #00356b; display: flex; flex-direction: column; align-items: center; justify-content: center; transform: rotate(-14deg);
+  font-family: var(--fell); opacity: 0.78; animation: stamp 0.5s 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.telegram-stamp span { font-size: 1.25rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.telegram-stamp small { font-size: 0.75rem; }
+@keyframes stamp { from { opacity: 0; transform: rotate(-14deg) scale(2.2); } to { opacity: 0.78; transform: rotate(-14deg) scale(1); } }
+.telegram-foot { margin: 1rem 0 0; font-size: 0.8rem; color: var(--muted); font-style: italic; }
+.telegram-gift { max-width: 420px; transform: rotate(1.2deg); }
+@media (max-width: 600px) { .telegram-meta { grid-template-columns: repeat(2, 1fr); } .telegram-stamp { top: auto; bottom: 3rem; width: 84px; height: 84px; } }
+@media (prefers-reduced-motion: reduce) { .telegram, .telegram-stamp { animation: none; } }
+.telegram-stamp { top: auto; bottom: 2.6rem; right: 11rem; }
+@media (max-width: 600px) { .telegram-stamp { right: 1rem; bottom: 4.5rem; } }

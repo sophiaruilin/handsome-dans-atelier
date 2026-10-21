@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { useBag } from '../cart/context'
+import { SEASONS, useSeason } from '../dan/season'
 import { useDanJump } from '../dan/useDanJump'
 import { usePrefs } from '../prefs/context'
 import Dan from './Dan'
@@ -17,6 +18,7 @@ export default function NavBar() {
   const { favorites } = usePrefs()
   const { count } = useBag()
   const jumping = useDanJump()
+  const { season } = useSeason()
   const navigate = useNavigate()
 
   async function handleLogout() {
@@ -46,6 +48,7 @@ export default function NavBar() {
         <Link to="/" className={`masthead-dan ${jumping ? 'jumping' : ''}`} aria-label="Home">
           <Dan size={96} />
           <span className="dan-caption">Look as handsome as Dan.</span>
+          <span className="season-caption">{SEASONS.find((x) => x.key === season)?.caption}</span>
           {jumping && (
             <span className="woof" aria-hidden="true">
               Woof!

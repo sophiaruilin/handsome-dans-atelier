@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { onDan } from '../dan/danBus'
 import Dan from './Dan'
 
-const CONFETTI = ['#00356b', '#b08d57', '#286dc0', '#f4b9c4', '#fffdf7', '#9cc3e6']
+const CONFETTI = ['#00356b', '#fffdf7', '#286dc0', '#9fb6d3', '#00244a', '#dfe7f0']
 
 // When a reservation is placed, Handsome Dan cartwheels across the screen with a biscuit.
 export default function DanCartwheel() {

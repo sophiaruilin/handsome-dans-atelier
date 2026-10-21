@@ -29,16 +29,16 @@ const HIGHLIGHTS = [
   },
 ]
 
-// Trader Joe's-style hero: pastel tiles, each with an engraving of a campus landmark.
+// Hero: Victorian engravings of campus landmarks in tiles of navy and white, like toile.
 const TILES = [
-  { art: '/art/harkness.svg', label: 'Harkness Tower', color: 'powder', tall: true },
-  { art: '/art/sterling.svg', label: 'Sterling Memorial Library', color: 'butter' },
-  { art: '/art/beinecke.svg', label: 'Beinecke Library', color: 'blush' },
-  { art: '/art/payne-whitney.svg', label: 'Payne Whitney Gym', color: 'sage', tall: true },
-  { art: '/art/rotunda.svg', label: 'The Rotunda', color: 'lavender' },
-  { art: '/art/connecticut-hall.svg', label: 'Connecticut Hall', color: 'peach' },
-  { art: '/art/phelps-gate.svg', label: 'Phelps Gate', color: 'mint' },
-  { art: '/art/yale-bowl.svg', label: 'The Yale Bowl', color: 'powder' },
+  { art: '/art/harkness.svg', label: 'Harkness Tower', color: 'navy', tall: true },
+  { art: '/art/sterling.svg', label: 'Sterling Memorial Library', color: 'ivory' },
+  { art: '/art/beinecke.svg', label: 'Beinecke Library', color: 'toile' },
+  { art: '/art/payne-whitney.svg', label: 'Payne Whitney Gym', color: 'navy', tall: true },
+  { art: '/art/rotunda.svg', label: 'The Rotunda', color: 'toile' },
+  { art: '/art/connecticut-hall.svg', label: 'Connecticut Hall', color: 'ivory' },
+  { art: '/art/phelps-gate.svg', label: 'Phelps Gate', color: 'ivory' },
+  { art: '/art/yale-bowl.svg', label: 'The Yale Bowl', color: 'navy' },
 ]
 
 const COLLEGES = ['Benjamin Franklin', 'Berkeley', 'Branford', 'Davenport', 'Grace Hopper', 'Jonathan Edwards', 'Morse', 'Pierson', 'Saybrook', 'Timothy Dwight', 'Trumbull']

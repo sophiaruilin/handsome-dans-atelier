@@ -1,8 +1,8 @@
 # Campus Customs: storefront design (Problem 10)
 
-**The idea:** a New Haven outfitter with the polish of the **Yale Club of New York City** and the preppy ease of the **New Haven Lawn Club** (navy, cream and brass; engraved frames; striped awnings), plus the playful Victorian engravings of **Trader Joe's**, with **Handsome Dan**, a dapper cartoon bulldog, as host. Every image on the site is an original drawing, made in code.
+**The idea:** a New Haven outfitter with the polish of the **Yale Club of New York City** and the preppy ease of the **New Haven Lawn Club** (navy, cream and brass; engraved frames; striped awnings), plus the Victorian engraving style of **Trader Joe's**, drawn in the **navy and white of a classic toile wallpaper**, with **Handsome Dan**, a dapper cartoon bulldog, as host. Every image on the site is an original drawing, made in code.
 
-![Home: masthead, Handsome Dan, pastel engraving tiles](screenshots/p10/01-home-hero.jpg)
+![Home: masthead, Seasonal Dan, navy-and-white engraving tiles](screenshots/p10/01-home-hero.jpg)
 
 ## 1. Brand system: fonts, color and hierarchy
 
@@ -12,7 +12,7 @@
 | Labels, nav and eyebrows | **IM Fell English SC** | Engraved-type small caps, like a 19th-century printed price card |
 | Dan's voice | **Caveat** handwriting | His notes, the gift card and captions feel personally written |
 | Body text | **Libre Franklin** | A clean, very readable sans for descriptions and forms |
-| Palette | Yale blue `#00356b` · cream `#f4eedf` · ivory `#fffdf7` · brass `#b08d57` | Yale Club navy and brass on Lawn Club cream; red is reserved for urgency (selling fast) |
+| Palette | **Navy and white, like toile:** Yale blue `#00356b`, off-white `#f4f2ec`, ivory `#fffdf7`, toile blue `#dfe7f0`, with brass `#b08d57` accents | The navy-and-white palette of a floral toile wallpaper, with Yale Club brass for trim. Red is reserved for urgency (selling fast) |
 
 **Hierarchy:**
 1. A navy strip of shop facts (officially licensed · 57 Broadway · reserve online, pick up in store).
@@ -30,7 +30,8 @@ Content sits in ivory panels with a **double brass "engraved frame"** (`--frame`
 - `frontend/scripts/build_art.py` draws **10 Victorian line engravings**: Harkness Tower, Sterling Memorial Library, Beinecke, Connecticut Hall, the Rotunda, Phelps Gate, Payne Whitney Gym, a Gothic residential-college gate, the Yale Bowl and New Haven's elms. They're drawn in Yale blue line art with crosshatch and diagonal hatching, like a steel engraving.
 - The same script assembles them, with toile sprigs, pennants and stars, into a **seamless 960×960 tile** (`public/art/toile.svg`). Motifs crossing an edge are redrawn on the opposite edge, so the pattern never shows a seam.
 - The tile is the **site-wide background**: off-white cream with Yale-blue buildings, softened by a cream wash so text stays readable. It's also used inside the chat panel and as the **gift-wrap paper** swatch at checkout.
-- The same engravings fill the **Trader Joe's-style hero**: pastel tiles (powder, butter, blush, sage, lavender, peach, mint), each holding a landmark, around a framed headline. They also appear on the Home highlight cards and in the footer.
+- The same engravings fill the **hero**: a Trader Joe's-style grid of engraving tiles, recoloured in **navy and white like toile**. Tiles alternate between **solid navy** (the engraving reversed out in white), **ivory** with a fine navy rule, and **toile blue** with the wallpaper faintly behind, all around a framed headline. They also appear on the Home highlight cards and in the footer.
+- *Revision:* the first version used Trader Joe's pastels (powder, butter, blush, sage…). At Sophia's request I switched to the navy-and-white palette of the floral toile, keeping the Victorian building engravings and Dan. The confetti and gift-wrap ribbon are navy and white too.
 
 ## 3. Handsome Dan, the mascot (`components/Dan.tsx`)
 
@@ -60,6 +61,22 @@ He's drawn in the same ink line as the wallpaper. He appears in:
 
 When a reservation is placed, Dan (now holding a **dog-bone biscuit** in his mouth) **cartwheels across the whole screen**: 4 full rotations with a hop on each turn. Yale-blue, brass and pink confetti falls, and a framed banner reads **"Boola Boola! Your order is reserved!"** Everything respects `prefers-reduced-motion`.
 
+### Seasonal Dan: his outfit follows the calendar
+
+![Seasonal Dan: fall, winter, spring, summer, Game week](screenshots/p10/10-seasonal-dan.jpg)
+
+`dan/season.ts` picks Dan's wardrobe from today's date. Every Dan on the site changes together: the masthead, the chat button and avatars, the picks, and the cartwheel.
+
+| Season | When | Dan wears | Masthead caption |
+|---|---|---|---|
+| Fall | Sep–Nov | Navy-and-white striped Yale scarf, with a brass elm leaf drifting by | *Scarf season on Old Campus.* |
+| Winter | Dec–Feb | Scarf, a snow-capped top hat and snowflakes | *Bundled up for the walk to Sterling.* |
+| Spring | Mar–May | Straw boater and a daisy boutonnière | *Boater weather on Cross Campus.* |
+| Summer | Jun–Aug | Boater and round navy sunglasses (instead of the monocle) | *Summer session, still handsome.* |
+| **Game week** | The 7 days up to **The Game**, traditionally the Saturday before Thanksgiving (Nov 21 in 2026) | Scarf and a **BEAT HARVARD** pennant | *It's The Game week. Beat Harvard!* |
+
+A **"Dan's wardrobe"** switcher in the footer (Today · Fall · Winter · Spring · Summer · Game week) previews every outfit for the rest of the browser session, so graders can see them all without waiting for November.
+
 ## 4. Shopping: the bag, gift wrap and "reserve for pickup"
 
 The shop takes no payments online, and our safety rules say the assistant never handles cards. So checkout **reserves the bag for pickup at 57 Broadway** (your choice):
@@ -70,7 +87,17 @@ The shop takes no payments online, and our safety rules say the assistant never 
   - **Re-reads every price from the catalogue**, never from the browser.
   - Checks stock and **takes it off the shelf**: the inventory goes down, so nobody else buys the last one while you're on the way. This happens inside one locked transaction (`BEGIN IMMEDIATE`), so two shoppers can't both reserve the last item, and a failure rolls back the whole order.
   - Saves the order in new `orders` and `order_items` tables, held for 3 days.
-- **Receipt:** order number (`CC-00001`), pickup-by date, items, subtotal and the gift card. Logged-in shoppers can ask Dan about their reservations (`get_my_account` → `orders`).
+- **Victorian telegram receipt** (`components/TelegramReceipt.tsx`): the confirmation arrives as a telegram from the *Campus Customs Telegraph Co.* It has:
+  - perforated edges and a Dan seal
+  - a No./Date/Time/Class grid (class: *Urgent · Paws-itively*)
+  - the message typed on pasted tape strips in a typewriter font, ending in STOPs: *"TO ADA LOVELACE · RESERVATION CONFIRMED STOP · 2 ITEMS HELD FOR YOU AT 57 BROADWAY NEW HAVEN STOP · PICK UP AND PAY IN STORE BY SATURDAY, OCTOBER 24 STOP · WRAPPED IN OUR FINEST TOILE WITH YOUR CARD STOP · BOOLA BOOLA STOP"*
+  - the itemised lines, the total due at pickup and the signature **HANDSOME DAN**
+  - a navy **RESERVED · 57 Broadway** rubber stamp that thumps down
+  - the handwritten gift card tucked underneath
+
+  Logged-in shoppers can also ask Dan about their reservations (`get_my_account` → `orders`).
+
+![Victorian telegram receipt](screenshots/p10/11-telegram-receipt.jpg)
 
 ![Bag with toile gift wrap and handwritten card](screenshots/p10/06-bag-gift-wrap.jpg)
 
@@ -139,5 +166,6 @@ The Shop page has a framed **filter sidebar**:
 1. **Home:** Dan under the title, pastel engraving tiles, Dan's Picks, college shields → click **Saybrook**.
 2. **Shop:** try Fit → Women's, Color → Navy, Affiliation → Family → Mom, and 🐾 Dan's Picks only.
 3. Open the **Yale Mom Hoodie** → read Dan's note → pick **M** → **Add to bag** (watch Dan jump and say "Woof!").
-4. **Bag** → tick **toile gift wrap**, write a card → **Reserve for pickup** (watch the cartwheel).
+4. **Bag** → tick **toile gift wrap**, write a card → **Reserve for pickup** (watch the cartwheel, then read the telegram).
 5. Click **Ask Handsome Dan** → *"What would you pick for my mom?"*
+6. **Footer → Dan's wardrobe:** try *Winter* and *Game week* and watch every Dan change outfits.
