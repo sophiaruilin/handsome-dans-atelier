@@ -1,5 +1,32 @@
-# Waitlist sign-ups (real emails, keep out of git)
-backend/waitlist.db
+# ---- Secrets: never commit real keys (the .env.example templates are kept) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
 
-# Per-turn chat speed/token log (operational data)
+# ---- Local-only data pack (not in git): place it in hw4/data/ ----
+data/
+
+# ---- Runtime data created by the app ----
+# back-in-stock sign-ups (real emails) and the per-turn chat speed/token log
+backend/waitlist.db
 backend/logs/
+output/audit_trail.unreadable-*.json
+
+# ---- Python ----
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# ---- Node / Vite ----
+node_modules/
+frontend/dist/
+
+# ---- Course materials and OS/editor files ----
+*.pdf
+.DS_Store
+Thumbs.db
+desktop.ini
