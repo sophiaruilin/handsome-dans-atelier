@@ -1,28 +1,46 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { formatPrice, getProduct } from '../api'
+import { formatPrice, getProduct, getSimilar } from '../api'
+import { askChat } from '../chat/askChat'
 import ColorSwatches from '../components/ColorSwatches'
+import FavoriteButton from '../components/FavoriteButton'
+import ProductStrip from '../components/ProductStrip'
 import StockBadge from '../components/StockBadge'
 import WaitlistForm from '../components/WaitlistForm'
+import { usePrefs } from '../prefs/context'
+import { useProductsById } from '../prefs/useProducts'
 import type { Product } from '../types'
 
 export default function ProductDetail() {
   const { productId = '' } = useParams()
+  const { mySize, setMySize, recent, addRecent } = usePrefs()
   // Results and the chosen size are tagged with their product id, so moving to another product resets them.
   const [loaded, setLoaded] = useState<{ id: string; product?: Product; error?: string } | null>(null)
+  const [similar, setSimilar] = useState<{ id: string; products: Product[] } | null>(null)
   const [choice, setChoice] = useState<{ id: string; size: string } | null>(null)
+  const { products: recentProducts } = useProductsById(recent.filter((id) => id !== productId).slice(0, 6))
 
   useEffect(() => {
     getProduct(productId)
-      .then((product) => setLoaded({ id: productId, product }))
+      .then((product) => {
+        setLoaded({ id: productId, product })
+        addRecent(productId)
+      })
       .catch((e: Error) => setLoaded({ id: productId, error: e.message }))
-  }, [productId])
+    getSimilar(productId)
+      .then((products) => setSimilar({ id: productId, products }))
+      .catch(() => setSimilar({ id: productId, products: [] }))
+  }, [productId, addRecent])
 
   const current = loaded?.id === productId ? loaded : null
   const product = current?.product ?? null
   const error = current?.error ?? ''
-  const selected = choice?.id === productId ? choice.size : null
-  const setSelected = (size: string) => setChoice({ id: productId, size })
+  // Pre-select the shopper's saved size until they pick another one on this page.
+  const selected = choice?.id === productId ? choice.size : mySize
+  const setSelected = (size: string) => {
+    setChoice({ id: productId, size })
+    setMySize(size)
+  }
 
   if (error) {
     return (
@@ -58,7 +76,7 @@ export default function ProductDetail() {
           <h2>Colors</h2>
           <ColorSwatches colors={product.colors} showNames />
 
-          <h2>Size</h2>
+          <h2>Size {mySize && <small className="muted">· your size is saved ({mySize})</small>}</h2>
           <div className="sizes">
             {product.inventory.map((s) => (
               <button
@@ -93,6 +111,23 @@ export default function ProductDetail() {
           {!size && <p className="muted">Pick a size to check availability.</p>}
           {product.stock_status === 'sold_out' && !size && <WaitlistForm productId={product.product_id} />}
 
+          <div className="detail-actions">
+            <FavoriteButton productId={product.product_id} label />
+            <button
+              type="button"
+              className="btn btn-small btn-outline"
+              onClick={() =>
+                askChat(
+                  size?.status === 'sold_out'
+                    ? `Size ${size.size} is sold out. What similar styles do you have in ${size.size}?`
+                    : 'Is this a good gift? What would you pair it with?',
+                )
+              }
+            >
+              💬 Ask about this item
+            </button>
+          </div>
+
           <p className="muted visit">
             Want to try it on? Visit us at <strong>57 Broadway, New Haven</strong>.
           </p>
@@ -104,6 +139,9 @@ export default function ProductDetail() {
           </ul>
         </div>
       </div>
+
+      <ProductStrip title="You might also like" products={similar?.id === productId ? similar.products : []} />
+      <ProductStrip title="Recently viewed" products={recentProducts} />
     </section>
   )
 }

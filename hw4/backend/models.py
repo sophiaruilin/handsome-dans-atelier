@@ -207,6 +207,13 @@ class ShopReply(BaseModel):
         default="",
         description="Short heading for the on-page results when show_on_page is true, e.g. 'Navy hoodies under $70'.",
     )
+    suggested_replies: list[str] = Field(
+        default_factory=list,
+        description=(
+            "2-3 short follow-up messages the shopper might send next, written as the shopper "
+            "(e.g. 'Show me similar styles', 'Is M in stock?'). Max 6 words each. Shown as tap-to-send buttons."
+        ),
+    )
 
 
 class SearchFilters(BaseModel):
@@ -234,4 +241,6 @@ class ChatResponse(BaseModel):
     reply: str
     products: list[Product] = Field(default_factory=list)  # small cards under the reply in the chat
     page_results: PageResults | None = None  # when set, the website shows these as cards on the page
+    suggestions: list[str] = Field(default_factory=list)  # quick-reply buttons under the reply
+    redacted_message: str | None = None  # the shopper's message with card numbers masked, if any were found
     tools_used: list[str] = Field(default_factory=list)

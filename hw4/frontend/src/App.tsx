@@ -9,6 +9,7 @@ import Login from './pages/Login'
 import NotFound from './pages/NotFound'
 import ProductDetail from './pages/ProductDetail'
 import Products from './pages/Products'
+import Saved from './pages/Saved'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/products" element={<Products />} />
           <Route path="/products/:productId" element={<ProductDetail />} />
           <Route path="/about" element={<About />} />
+          <Route path="/saved" element={<Saved />} />
           <Route path="/login" element={<Login />} />
           <Route path="/create-account" element={<CreateAccount />} />
           <Route path="*" element={<NotFound />} />

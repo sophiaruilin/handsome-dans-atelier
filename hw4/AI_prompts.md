@@ -177,3 +177,21 @@ Template for each problem (copy for each new problem):
 > Also pass enough page context that if someone is on a product page and asks do you have this in pink, etc. the agent knows which item they mean. (hint you can put code into the agent context - what do you recommend / best practices for tthis to achieve?)
 >
 > guests can still chat, but history only needs to persist for logged-in users. document in output/harness.md: how user chat history is stored, what customer fields the agent sees, and how page context is passed.
+
+## Problem 9 — Usability improvements
+
+**Prompt (my own words):**
+
+> Problem 9: Usability improvements
+>
+> now that core shop works ,improve it. choose and implement: 2 front-end usability improvements, and 2 agent/backend usability improvements. if you feel 3-4 improvements for ecah can be made, tell me why and you can do that too.
+>
+> front-end improvement are things that make the site look better and make it easier to use.
+>
+> agent/backend imprvoements are things that make agent output better, more accurate, or safer, like new agent tools or things that make agent run faster or cheapre.
+>
+> write output/usability.md before or as you build. for each of the improvements say what you added, and why it helps campus customs shopper or business.
+>
+> then make sure all improvements actually show up in the running app!
+>
+> my Graders will read the write-up and look for the features! make me look outstanding pretty please, this ewbsite hsould really dazzle :)

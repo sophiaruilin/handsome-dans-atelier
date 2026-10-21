@@ -16,12 +16,11 @@ import json
 import logging
 import os
 import sqlite3
-from datetime import datetime, timezone
 
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
+from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UsageLimitExceeded
 
 import auth
 import tools
@@ -65,21 +64,6 @@ def users_db() -> sqlite3.Connection:
     return conn
 
 
-def waitlist_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(tools.WAITLIST_DB)
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS waitlist (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_id TEXT NOT NULL,
-            size TEXT,
-            email TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            UNIQUE (product_id, size, email)
-        )"""
-    )
-    return conn
-
-
 # --- Products ------------------------------------------------------------------------------
 
 @app.get("/api/health")
@@ -90,6 +74,12 @@ def health():
 @app.get("/api/products", response_model=list[Product])
 def list_products():
     return tools.load_products()
+
+
+@app.get("/api/products/{product_id}/similar", response_model=list[Product])
+def similar(product_id: str, limit: int = 4):
+    """"You might also like" on the product page (same logic as the agent's find_similar_products tool)."""
+    return tools.similar_products(product_id, limit=min(max(limit, 1), 8))
 
 
 @app.get("/api/products/{product_id}", response_model=Product)
@@ -239,16 +229,24 @@ async def chat(body: ChatRequest, cc_session: str | None = Cookie(default=None))
     page = body.page
     if page.product_id and not tools.get_product(page.product_id):
         page = page.model_copy(update={"product_id": None})
+    # Card numbers are masked before they reach the AI model, the database or the usage log.
+    message, redacted = tools.redact_card_numbers(body.message)
     try:
-        result = await run_agent(body.message, history, page, customer)
+        result = await run_agent(message, history, page, customer)
     except UsageLimitExceeded:
         raise HTTPException(429, "That question needed too many steps. Try asking something more specific.")
+    except UnexpectedModelBehavior:
+        # The price fact-checker rejected every attempt: better no answer than a wrong price.
+        log.exception("chat output failed validation")
+        raise HTTPException(502, "Sorry, I couldn't double-check that answer. Please try asking again.")
     except (ModelHTTPError, RuntimeError):
         log.exception("chat failed")
         raise HTTPException(502, "The shop assistant is unavailable right now. Please try again in a moment.")
+    if redacted:
+        result.redacted_message = message
     if customer:
         with users_db() as conn:
-            save_message(conn, customer.user_id, "user", body.message, [])
+            save_message(conn, customer.user_id, "user", message, [])
             save_message(conn, customer.user_id, "assistant", result.reply, result.products)
     return result
 
@@ -275,13 +273,7 @@ def clear_chat_history(cc_session: str | None = Cookie(default=None)):
 
 @app.post("/api/waitlist")
 def join_waitlist(body: WaitlistRequest):
-    product = get_product(body.product_id)
-    if body.size and body.size not in {s.size for s in product.inventory}:
-        raise HTTPException(400, "Unknown size for this product")
-    with waitlist_db() as conn:
-        conn.execute(
-            "INSERT OR IGNORE INTO waitlist (product_id, size, email, created_at) VALUES (?, ?, ?, ?)",
-            (body.product_id, body.size, body.email.lower(), datetime.now(timezone.utc).isoformat()),
-        )
-    size = f" in size {body.size}" if body.size else ""
-    return {"ok": True, "message": f"You're on the list! We'll email {body.email} when {product.name}{size} is back."}
+    ok, message = tools.add_to_waitlist(body.product_id, body.email, body.size)
+    if not ok:
+        raise HTTPException(400, message)
+    return {"ok": True, "message": message}

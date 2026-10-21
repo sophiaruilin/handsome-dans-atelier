@@ -16,7 +16,11 @@ Try it without the website:  python agent.py "Do you have navy hoodies under $70
 
 from __future__ import annotations
 
+import json
 import os
+import re
+import time
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -40,6 +44,7 @@ from models import (
     PageResults,
     ProductInfo,
     ProductSearchResult,
+    ProductSummary,
     SearchFilters,
     ShopReply,
     StockCheck,
@@ -50,6 +55,7 @@ PROMPT_PATH = BACKEND_DIR / "prompts" / "prompt.md"
 PORTKEY_BASE_URL = "https://api.portkey.ai/v1"
 DEFAULT_MODEL = "gpt-6-astra"
 MAX_REQUESTS = 8  # model calls per chat turn (bounds cost if the agent loops on tools)
+USAGE_LOG = BACKEND_DIR / "logs" / "chat_usage.jsonl"  # per-turn speed/token log (git-ignored)
 
 # .env may live in backend/, hw4/ or the class folder. Never commit it.
 load_dotenv(BACKEND_DIR / ".env")
@@ -66,9 +72,16 @@ class ShopState:
     tools_used: list[str] = field(default_factory=list)
     # Each search_products call and its match count, so the page can show the agent's search.
     searches: list[tuple[SearchFilters, int]] = field(default_factory=list)
+    # Every price the tools (or the page context) returned this turn; the fact-checker allows only these.
+    known_prices: set[float] = field(default_factory=set)
+    shopper_message: str = ""
+    price_corrections: int = 0
+
+    def saw(self, *prices: float) -> None:
+        self.known_prices.update(round(p, 2) for p in prices)
 
 
-agent = Agent(deps_type=ShopState, output_type=ShopReply)
+agent = Agent(deps_type=ShopState, output_type=ShopReply, retries=2)
 
 
 @agent.instructions
@@ -102,9 +115,17 @@ def page_context(ctx: RunContext[ShopState]) -> str:
     lines = ["## Where the shopper is", f"Page: `{page.path}`"]
     p = tools.get_product(page.product_id) if page.product_id else None
     if p:
+        ctx.deps.saw(p.price)
+        stock = ", ".join(
+            f"{s.size} SOLD OUT" if s.quantity == 0
+            else f"{s.size} {s.quantity} left" + (" (selling fast)" if s.status == "selling_fast" else "")
+            for s in p.inventory
+        )
         lines += [
             f"They are on the product page for **{p.name}** (product_id `{p.product_id}`): {p.garment_type}, "
             f"${p.price:.2f}, colors: {', '.join(p.colors)}.",
+            f"Live stock for this product, read from the database for this message: {stock}. Answer price and "
+            "size questions about this product from this line; no tool call is needed.",
             "\"This\", \"it\", \"this one\" and \"the one I'm looking at\" mean this product. Use its product_id with "
             "get_product_info or check_stock; don't ask which item they mean.",
             "Colors are fixed per product (there are no color options), so for \"do you have this in pink?\" say "
@@ -154,6 +175,7 @@ def search_products(
         query=query, garment_type=garment_type, color=color, max_price=max_price, size=size, in_stock_only=in_stock_only
     )
     ctx.deps.searches.append((filters, result.total_matches))
+    ctx.deps.saw(*(p.price for p in result.products))
     return result
 
 
@@ -164,7 +186,9 @@ def get_product_info(ctx: RunContext[ShopState], product_id: str) -> ProductInfo
     Use for "tell me about", "how much is" and "which sizes do you have" questions.
     """
     ctx.deps.tools_used.append("get_product_info")
-    return tools.product_info(_lookup(product_id))
+    p = _lookup(product_id)
+    ctx.deps.saw(p.price)
+    return tools.product_info(p)
 
 
 @agent.tool
@@ -176,7 +200,46 @@ def check_stock(ctx: RunContext[ShopState], product_id: str, size: str) -> Stock
         size: the size the shopper asked about, as they wrote it, e.g. "L", "large" or "2XL".
     """
     ctx.deps.tools_used.append("check_stock")
-    return tools.stock_check(_lookup(product_id), size)
+    p = _lookup(product_id)
+    ctx.deps.saw(p.price)
+    return tools.stock_check(p, size)
+
+
+@agent.tool
+def find_similar_products(
+    ctx: RunContext[ShopState], product_id: str, color: str = "", max_price: float | None = None, size: str = ""
+) -> list[ProductSummary]:
+    """Up to 4 in-stock styles most like this product (same garment type, shared themes, similar price).
+
+    Use for "anything like this?", "something similar in gray?", or when the asked-for size or color isn't
+    available and you want to offer alternatives.
+
+    Args:
+        product_id: the product to find alternatives for.
+        color: only alternatives whose main color matches, e.g. "gray".
+        max_price: only alternatives at or under this price.
+        size: only alternatives with this size in stock.
+    """
+    ctx.deps.tools_used.append("find_similar_products")
+    _lookup(product_id)
+    found = tools.similar_products(product_id, color=color, max_price=max_price, size=size)
+    ctx.deps.saw(*(p.price for p in found))
+    return [tools.summary(p) for p in found]
+
+
+@agent.tool
+def join_waitlist(ctx: RunContext[ShopState], product_id: str, size: str = "") -> str:
+    """Add the logged-in shopper to the back-in-stock email list for a sold-out product or size.
+
+    Only call this when the shopper asks to be notified or agrees to join. Uses the email on their
+    account. Guests should use the waitlist form on the product page or log in.
+    """
+    ctx.deps.tools_used.append("join_waitlist")
+    if not ctx.deps.customer:
+        return "The shopper is a guest. Ask them to log in, or use the waitlist form on the product page."
+    _lookup(product_id)
+    ok, message = tools.add_to_waitlist(product_id, ctx.deps.customer.email, size or None)
+    return message if ok else f"Not added: {message}"
 
 
 @agent.tool
@@ -196,6 +259,26 @@ def catalogue_overview(ctx: RunContext[ShopState]) -> CatalogueOverview:
     """Garment types (with counts), colors, sizes and price range the shop carries."""
     ctx.deps.tools_used.append("catalogue_overview")
     return tools.catalogue_overview()
+
+
+_PRICE = re.compile(r"\$\s?(\d{1,4}(?:,\d{3})*(?:\.\d{1,2})?)")
+
+
+@agent.output_validator
+def check_prices(ctx: RunContext[ShopState], output: ShopReply) -> ShopReply:
+    """Fact-check: every $ amount in the reply must be a price a tool returned this turn (or a number the
+    shopper wrote, like a budget). Otherwise the model must correct it, so a made-up price never reaches a shopper."""
+    allowed = set(ctx.deps.known_prices)
+    allowed.update(round(float(n.replace(",", "")), 2) for n in re.findall(r"\d+(?:,\d{3})*(?:\.\d{1,2})?", ctx.deps.shopper_message))
+    found = {m for m in _PRICE.findall(output.reply)}
+    unknown = sorted(m for m in found if round(float(m.replace(",", "")), 2) not in allowed)
+    if unknown:
+        ctx.deps.price_corrections += 1
+        raise ModelRetry(
+            f"Your reply mentions {', '.join('$' + u for u in unknown)}, which is not the price of any product a tool "
+            "returned this turn. Look the price up with get_product_info (or remove it), then answer again."
+        )
+    return output
 
 
 def _history(messages: list[ChatMessage]) -> list[ModelMessage]:
@@ -243,7 +326,8 @@ async def run_agent(
     page: PageContext | None = None,
     customer: CustomerProfile | None = None,
 ) -> ChatResponse:
-    state = ShopState(customer=customer, page=page or PageContext())
+    state = ShopState(customer=customer, page=page or PageContext(), shopper_message=message)
+    started = time.perf_counter()
     client, model = _client_and_model()
     async with client:
         result = await agent.run(
@@ -254,14 +338,36 @@ async def run_agent(
             usage_limits=UsageLimits(request_limit=MAX_REQUESTS),
         )
     out = result.output
+    _log_usage(state, result.usage, time.perf_counter() - started, out)
     # Cards come from the database, not the model, so prices and stock are always current.
     cards = tools.get_products(out.product_ids)[:MAX_CARDS]
     return ChatResponse(
         reply=out.reply,
         products=cards,
         page_results=_page_results(out, state, message),
+        suggestions=[s.strip() for s in out.suggested_replies if s.strip()][:3],
         tools_used=state.tools_used,
     )
+
+
+def _log_usage(state: ShopState, usage, seconds: float, out: ShopReply) -> None:
+    """One JSON line per chat turn: speed, model requests, tokens and tools. No message text (privacy)."""
+    USAGE_LOG.parent.mkdir(exist_ok=True)
+    record = {
+        "run_id": uuid.uuid4().hex[:8],
+        "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "customer": "logged_in" if state.customer else "guest",
+        "page": "product" if state.page.product_id else state.page.path,
+        "seconds": round(seconds, 2),
+        "model_requests": usage.requests,
+        "input_tokens": usage.input_tokens,
+        "output_tokens": usage.output_tokens,
+        "tools": state.tools_used,
+        "price_corrections": state.price_corrections,
+        "show_on_page": out.show_on_page,
+    }
+    with USAGE_LOG.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(record) + "\n")
 
 
 def _page_results(out: ShopReply, state: ShopState, message: str) -> PageResults | None:

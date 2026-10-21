@@ -1,5 +1,6 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
+import { usePrefs } from '../prefs/context'
 
 const MAIN_LINKS = [
   { to: '/', label: 'Home', end: true },
@@ -9,6 +10,7 @@ const MAIN_LINKS = [
 
 export default function NavBar() {
   const { user, loading, logout } = useAuth()
+  const { favorites } = usePrefs()
   const navigate = useNavigate()
 
   async function handleLogout() {
@@ -33,6 +35,10 @@ export default function NavBar() {
         ))}
       </nav>
       <nav className="nav-account">
+        <NavLink to="/saved" className="nav-saved" aria-label={`Saved items (${favorites.length})`}>
+          <span aria-hidden="true">♥</span> Saved
+          {favorites.length > 0 && <span className="badge">{favorites.length}</span>}
+        </NavLink>
         {loading ? null : user ? (
           <>
             <span className="greeting">Hi, {user.first_name}!</span>

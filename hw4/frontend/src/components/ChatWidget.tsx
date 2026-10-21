@@ -3,6 +3,7 @@ import Markdown from 'react-markdown'
 import { Link, useLocation, useMatch, useNavigate } from 'react-router-dom'
 import { clearChatHistory, formatPrice, getChatHistory, sendChat } from '../api'
 import { useAuth } from '../auth/context'
+import { onAskChat } from '../chat/askChat'
 import { useChatResults } from '../chat/context'
 import type { ChatMessage, PageContext, PageResults, Product } from '../types'
 import StockBadge from './StockBadge'
@@ -11,6 +12,13 @@ const greeting = (firstName?: string): ChatMessage => ({
   role: 'assistant',
   content: `Hi${firstName ? `, ${firstName}` : ''}! I'm the Campus Customs shop assistant. Ask me about sizes, colors or gift ideas.`,
 })
+
+// One-tap conversation starters for the page the shopper is on.
+function starters(pathname: string, onProduct: boolean): string[] {
+  if (onProduct) return ['What sizes are left?', 'Show me similar styles', 'Does this come in gray?']
+  if (pathname === '/products') return ['What hoodies do you have?', 'Navy crewnecks under $60', "What's selling fast?"]
+  return ['Gift ideas for a Yale parent', 'What hoodies do you have?', 'Where is the store?']
+}
 
 function ChatCard({ product }: { product: Product }) {
   return (
@@ -36,6 +44,7 @@ export default function ChatWidget() {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const productId = useMatch('/products/:productId')?.params.productId
   const chatResults = useChatResults()
   const navigate = useNavigate()
@@ -56,12 +65,22 @@ export default function ChatWidget() {
   }, [user])
 
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight })
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, open, sending])
 
-  async function send(e: FormEvent) {
-    e.preventDefault()
-    const text = draft.trim()
+  // "Ask about this item" buttons elsewhere on the site open the chat with a question ready to send.
+  useEffect(
+    () =>
+      onAskChat((question) => {
+        setOpen(true)
+        setDraft(question)
+        setTimeout(() => inputRef.current?.focus(), 50)
+      }),
+    [],
+  )
+
+  async function send(text: string) {
+    text = text.trim()
     if (!text || sending) return
     const history = messages.slice(1) // skip the greeting
     setMessages((m) => [...m, { role: 'user', content: text }])
@@ -76,7 +95,14 @@ export default function ChatWidget() {
       }
       const res = await sendChat(text, history, page)
       const pageResults = res.page_results ?? undefined
-      setMessages((m) => [...m, { role: 'assistant', content: res.reply, products: res.products, pageResults }])
+      setMessages((m) => {
+        // If the server masked a card number, show the masked version in the shopper's own bubble too.
+        const mine = res.redacted_message ? [...m.slice(0, -1), { role: 'user' as const, content: res.redacted_message }] : m
+        return [
+          ...mine,
+          { role: 'assistant', content: res.reply, products: res.products, pageResults, suggestions: res.suggestions },
+        ]
+      })
       if (pageResults) showOnPage(pageResults)
     } catch (err) {
       const reason = err instanceof Error ? err.message : ''
@@ -89,11 +115,26 @@ export default function ChatWidget() {
     }
   }
 
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    send(draft)
+  }
+
   async function newChat() {
     if (user && !window.confirm('Start a new chat? This clears your saved chat history.')) return
     if (user) await clearChatHistory().catch(() => {})
     setMessages([greeting(user?.first_name)])
   }
+
+  // Quick replies: page starters before the first question, then the agent's own follow-ups.
+  const last = messages[messages.length - 1]
+  const quickReplies = sending
+    ? []
+    : messages.length === 1
+      ? starters(pathname, !!productId)
+      : last.role === 'assistant'
+        ? (last.suggestions ?? [])
+        : []
 
   return (
     <div className="chat">
@@ -132,10 +173,26 @@ export default function ChatWidget() {
                 )}
               </div>
             ))}
-            {sending && <p className="bubble assistant typing">Looking that up…</p>}
+            {sending && (
+              <div className="bubble assistant typing" aria-label="Assistant is typing">
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
+            {quickReplies.length > 0 && (
+              <div className="quick-replies" aria-label="Suggested questions">
+                {quickReplies.map((q) => (
+                  <button key={q} type="button" onClick={() => send(q)}>
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <form className="chat-input" onSubmit={send}>
+          <form className="chat-input" onSubmit={submit}>
             <input
+              ref={inputRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={productId ? 'Ask about this item…' : 'Ask about sizes, colors, gifts…'}

@@ -18,11 +18,12 @@ interface Props {
   results: PageResults
   version: number
   onClear: () => void
+  mySize?: string | null
 }
 
 // Products the shop assistant found, rendered with the same ProductCard as the full catalogue,
 // so clicking one opens the single-item page exactly like any other card.
-export default function ChatResults({ results, version, onClear }: Props) {
+export default function ChatResults({ results, version, onClear, mySize }: Props) {
   return (
     <section className="chat-results" aria-live="polite">
       <div className="chat-results-head">
@@ -47,7 +48,7 @@ export default function ChatResults({ results, version, onClear }: Props) {
       <div className="grid" key={version}>
         {results.products.map((p, i) => (
           <div key={p.product_id} className="pop-in" style={{ animationDelay: `${Math.min(i, 12) * 45}ms` }}>
-            <ProductCard product={p} />
+            <ProductCard product={p} mySize={mySize} />
           </div>
         ))}
       </div>

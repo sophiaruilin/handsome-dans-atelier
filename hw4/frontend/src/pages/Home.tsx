@@ -1,4 +1,7 @@
 import { Link } from 'react-router-dom'
+import ProductStrip from '../components/ProductStrip'
+import { usePrefs } from '../prefs/context'
+import { useProductsById } from '../prefs/useProducts'
 
 // Text from output/site_copy.md (Sophia's approved draft).
 const HIGHLIGHTS = [
@@ -17,6 +20,8 @@ const HIGHLIGHTS = [
 ]
 
 export default function Home() {
+  const { recent } = usePrefs()
+  const { products: recentProducts } = useProductsById(recent.slice(0, 6))
   return (
     <>
       <section className="hero">
@@ -46,6 +51,12 @@ export default function Home() {
           </article>
         ))}
       </section>
+
+      {recentProducts.length > 0 && (
+        <div className="page recent-home">
+          <ProductStrip title="Pick up where you left off" products={recentProducts} />
+        </div>
+      )}
 
       <section className="band">
         <p>

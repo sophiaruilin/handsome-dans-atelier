@@ -488,3 +488,17 @@ A **"Customers and memory"** section in `prompts/prompt.md`:
 | "Remind me what size my mom wears? Is the second one you showed me in stock in that size? Also, what email is on my account?" | "you said your mom wears M and loves gray"; the second pick, Champion Reverse Weave Crewneck, "is in stock in M, 12 available" (database: M = 12); "Your account email is handsome.dan@campuscustoms.yale.edu" |
 | Logged out, then as a guest: "What's my email, and what size does my mom wear?" | "You're browsing as a guest, so I can't look up your email. I also don't have any information about your mom's size." Nothing leaked; the server has 0 guest messages |
 | Logged back in on another product page | Dan's 6 saved messages reloaded in the widget ("💾 Chat saved to your account") |
+
+## Problem 9 — Usability improvements
+
+See **`output/usability.md`**: 4 front-end and 4 agent/back-end improvements, with screenshots in `output/screenshots/`. Harness-relevant changes:
+
+- **Agent deps:** `ShopState` now also tracks `known_prices`, `shopper_message` and `price_corrections`, for the price fact-checker.
+- **Output validator:** `check_prices` rejects any `$` amount no tool returned, and the agent retries up to 2 times (`Agent(retries=2)`).
+- **New tools:** `find_similar_products` and `join_waitlist` (logged-in shoppers, using the account email). There are now 7 tools in total.
+- **Page context:** now includes the product's live stock from the database, so product-page questions take one model request instead of two.
+- **Structured output:** `ShopReply.suggested_replies` → `ChatResponse.suggestions`, shown as quick-reply buttons.
+- **Card masking:** `tools.redact_card_numbers` masks card numbers before the agent, database or logs see them. The masked text comes back as `ChatResponse.redacted_message`.
+- **Usage log:** one JSON line per chat turn in `backend/logs/chat_usage.jsonl` (git-ignored, no message text).
+- **New endpoint:** `GET /api/products/{id}/similar`, shared with the agent tool.
+- **Tests:** 31 in `backend/tests/`.

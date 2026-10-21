@@ -28,6 +28,9 @@ export const getProducts = () => request<Product[]>('/api/products')
 
 export const getProduct = (id: string) => request<Product>(`/api/products/${encodeURIComponent(id)}`)
 
+export const getSimilar = (id: string, limit = 4) =>
+  request<Product[]>(`/api/products/${encodeURIComponent(id)}/similar?limit=${limit}`)
+
 export const joinWaitlist = (productId: string, email: string, size?: string) =>
   request<{ ok: boolean; message: string }>(
     '/api/waitlist',
@@ -37,7 +40,14 @@ export const joinWaitlist = (productId: string, email: string, size?: string) =>
 // The back end runs the PydanticAI shop agent. For logged-in shoppers it saves the chat and uses
 // the saved history as memory (the history sent here is only used for guests).
 export const sendChat = (message: string, history: ChatMessage[], page: PageContext) =>
-  request<{ reply: string; products: Product[]; page_results: PageResults | null; tools_used: string[] }>(
+  request<{
+    reply: string
+    products: Product[]
+    page_results: PageResults | null
+    suggestions: string[]
+    redacted_message: string | null
+    tools_used: string[]
+  }>(
     '/api/chat',
     postJson({
       message,

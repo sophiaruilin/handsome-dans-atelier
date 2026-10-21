@@ -314,3 +314,108 @@ def my_account(customer: CustomerProfile) -> MyAccount:
         saved_messages=saved,
         waitlist=waitlist,
     )
+
+
+# --- Similar products (agent tool + "You might also like" on product pages) -----------------
+
+def garment_category(garment_type: str) -> str | None:
+    g = garment_type.lower()
+    return next((name for name, match in GARMENT_CATEGORIES.items() if name != "sweatshirt" and match(g)), None)
+
+
+def similar_products(
+    product_id: str, limit: int = 4, color: str = "", max_price: float | None = None, size: str = ""
+) -> list[Product]:
+    """Styles most like this one: same garment category first, then shared tags and colors, in stock first.
+
+    Optional filters narrow the alternatives, e.g. a different color or a size that is in stock.
+    """
+    base = get_product(product_id)
+    if not base:
+        return []
+    shop_size = normalize_size(size) if size else None
+    base_tags = {t.lower() for t in base.search_tags} - {"yale", "campus customs", "yale merch", "college apparel"}
+    base_category = garment_category(base.garment_type)
+    scored = []
+    for p in load_products():
+        if p.product_id == base.product_id or p.stock_status == "sold_out":
+            continue
+        if color and not (p.colors and color.lower() in p.colors[0].lower()):
+            continue
+        if max_price is not None and p.price > max_price:
+            continue
+        if shop_size and not any(s.size == shop_size and s.quantity > 0 for s in p.inventory):
+            continue
+        score = 0.0
+        if base_category and garment_category(p.garment_type) == base_category:
+            score += 5
+        score += 1.5 * len(base_tags & {t.lower() for t in p.search_tags})
+        if p.colors and base.colors and p.colors[0].lower() == base.colors[0].lower():
+            score += 2
+        score -= abs(p.price - base.price) / 20  # similar price point
+        scored.append((score, p.name, p))
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    return [p for _, _, p in scored[:limit]]
+
+
+# --- Waitlist (website form + agent tool) ---------------------------------------------------
+
+def add_to_waitlist(product_id: str, email: str, size: str | None = None) -> tuple[bool, str]:
+    """Save a back-in-stock request. Returns (ok, message for the shopper)."""
+    product = get_product(product_id)
+    if not product:
+        return False, f"No product has product_id {product_id!r}."
+    shop_size = normalize_size(size) if size else None
+    if size and not shop_size:
+        return False, f"We don't make {product.name} in size {size}."
+    if shop_size:
+        row = next(s for s in product.inventory if s.size == shop_size)
+        if row.quantity > 0:
+            return False, f"{product.name} is in stock in size {shop_size} ({row.quantity} left), so no waitlist is needed."
+    with sqlite3.connect(WAITLIST_DB) as conn:
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS waitlist (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id TEXT NOT NULL,
+                size TEXT,
+                email TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE (product_id, size, email)
+            )"""
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO waitlist (product_id, size, email, created_at) VALUES (?, ?, ?, datetime('now'))",
+            (product_id, shop_size, email.lower()),
+        )
+    in_size = f" in size {shop_size}" if shop_size else ""
+    return True, f"You're on the list! We'll email {email} when {product.name}{in_size} is back."
+
+
+# --- Sensitive data ---------------------------------------------------------------------------
+
+_CARD_CANDIDATE = re.compile(r"\b(?:\d[ -]?){12,18}\d\b")
+
+
+def _luhn_ok(digits: str) -> bool:
+    total, parity = 0, len(digits) % 2
+    for i, ch in enumerate(digits):
+        d = int(ch)
+        if i % 2 == parity:
+            d = d * 2 - 9 if d > 4 else d * 2
+        total += d
+    return total % 10 == 0
+
+
+def redact_card_numbers(text: str) -> tuple[str, bool]:
+    """Mask anything that looks like a payment card number (13-19 digits passing the Luhn check)."""
+    changed = False
+
+    def mask(m: re.Match) -> str:
+        nonlocal changed
+        digits = re.sub(r"\D", "", m.group())
+        if 13 <= len(digits) <= 19 and _luhn_ok(digits):
+            changed = True
+            return f"[card number removed •••• {digits[-4:]}]"
+        return m.group()
+
+    return _CARD_CANDIDATE.sub(mask, text), changed

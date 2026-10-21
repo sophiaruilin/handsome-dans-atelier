@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import AuthProvider from './auth/AuthProvider.tsx'
 import ChatResultsProvider from './chat/ChatResultsProvider.tsx'
+import ShopperPrefsProvider from './prefs/ShopperPrefsProvider.tsx'
 import './index.css'
 import App from './App.tsx'
 
@@ -11,7 +12,9 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         <ChatResultsProvider>
-          <App />
+          <ShopperPrefsProvider>
+            <App />
+          </ShopperPrefsProvider>
         </ChatResultsProvider>
       </AuthProvider>
     </BrowserRouter>

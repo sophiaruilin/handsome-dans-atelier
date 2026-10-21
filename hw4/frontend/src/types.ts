@@ -25,6 +25,7 @@ export interface ChatMessage {
   content: string
   products?: Product[] // cards shown under an assistant reply
   pageResults?: PageResults // search this reply put on the page (website only, not sent back)
+  suggestions?: string[] // agent's follow-up quick replies (website only)
 }
 
 export interface User {
