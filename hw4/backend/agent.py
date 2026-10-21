@@ -8,8 +8,10 @@ cards to show under it, on-page search results (when the shopper is browsing), a
   (PageContext; product facts looked up from the database).
 - Model: gpt-6-astra via Portkey (PORTKEY_API_KEY in .env), through the OpenAI Responses API.
   Override with OPENAI_MODEL=...
-- Tools: search_products, get_product_info, check_stock and catalogue_overview. Thin wrappers
-  over tools.py, which reads the shop database read-only, returning typed results (models.py).
+- Tools: search_products, get_product_info, check_stock, find_similar_products, join_waitlist,
+  get_my_account and catalogue_overview. Thin wrappers over tools.py (typed results in models.py).
+- Audit: every step of the agent loop (model responses, tool calls and results, retries, stop
+  reason) is appended to output/audit_trail.json (audit.py).
 
 Try it without the website:  python agent.py "Do you have navy hoodies under $70?"
 """
@@ -27,10 +29,21 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from pydantic_ai import Agent, ModelRetry, RunContext, UsageLimits
-from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, TextPart, UserPromptPart
+from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UsageLimitExceeded
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    RetryPromptPart,
+    TextPart,
+    ToolCallPart,
+    ToolReturnPart,
+    UserPromptPart,
+)
 from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
+import audit
 import tools
 from models import (
     MAX_CARDS,
@@ -328,17 +341,59 @@ async def run_agent(
 ) -> ChatResponse:
     state = ShopState(customer=customer, page=page or PageContext(), shopper_message=message)
     started = time.perf_counter()
+    run_id = uuid.uuid4().hex[:8]
+    audit.record(
+        {
+            "run_id": run_id,
+            "event": "run_start",
+            "customer": "logged_in" if customer else "guest",
+            "page": state.page.path,
+            "product_id": state.page.product_id,
+            "history_messages": len(history or []),
+            "message": audit.short(message),
+        }
+    )
     client, model = _client_and_model()
-    async with client:
-        result = await agent.run(
-            message,
-            model=model,
-            deps=state,
-            message_history=_history(history or []),
-            usage_limits=UsageLimits(request_limit=MAX_REQUESTS),
+    try:
+        async with client:
+            result, last_finish = await _run_audited(run_id, message, model, state, history or [])
+    except UsageLimitExceeded:
+        _audit_end(run_id, state, started, "request_limit", f"stopped after {MAX_REQUESTS} model requests")
+        raise
+    except ModelHTTPError as e:
+        if not _is_content_filter(e):
+            _audit_end(run_id, state, started, "error", f"ModelHTTPError {e.status_code}")
+            raise
+        # The model provider's safety filter refused the request (e.g. a jailbreak attempt).
+        # Treat it as a polite refusal, in character, rather than an outage.
+        _audit_end(run_id, state, started, "blocked_by_content_filter", "provider safety filter refused the request")
+        return ChatResponse(
+            reply="I can't help with that one. I'm Handsome Dan, and I stick to Campus Customs: sizes, stock, prices "
+            "and gift ideas. What can I help you find?",
+            suggestions=["What hoodies do you have?", "Gift ideas under $60", "Where is the store?"],
         )
+    except UnexpectedModelBehavior as e:
+        _audit_end(run_id, state, started, "output_rejected", audit.short(e, 160))
+        raise
+    except Exception as e:
+        _audit_end(run_id, state, started, "error", type(e).__name__)
+        raise
     out = result.output
-    _log_usage(state, result.usage, time.perf_counter() - started, out)
+    usage = result.usage
+    _log_usage(state, usage, time.perf_counter() - started, out)
+    _audit_end(
+        run_id,
+        state,
+        started,
+        "final_answer",
+        f"model finish_reason={last_finish}",
+        model_requests=usage.requests,
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
+        cards=len(out.product_ids),
+        show_on_page=out.show_on_page,
+        reply=audit.short(out.reply, 160),
+    )
     # Cards come from the database, not the model, so prices and stock are always current.
     cards = tools.get_products(out.product_ids)[:MAX_CARDS]
     return ChatResponse(
@@ -347,6 +402,72 @@ async def run_agent(
         page_results=_page_results(out, state, message),
         suggestions=[s.strip() for s in out.suggested_replies if s.strip()][:3],
         tools_used=state.tools_used,
+    )
+
+
+def _is_content_filter(e: ModelHTTPError) -> bool:
+    body = e.body if isinstance(e.body, dict) else {}
+    return e.status_code == 400 and ("content_filter" in str(body.get("code", "")) or "content management policy" in str(body))
+
+
+async def _run_audited(run_id: str, message: str, model, state: ShopState, history: list[ChatMessage]):
+    """Run the agent loop node by node, appending each model step, tool call/result and retry to the audit trail."""
+    step, last_finish = 0, None
+    async with agent.iter(
+        message,
+        model=model,
+        deps=state,
+        message_history=_history(history),
+        usage_limits=UsageLimits(request_limit=MAX_REQUESTS),
+    ) as run:
+        async for node in run:
+            if Agent.is_call_tools_node(node):
+                step += 1
+                response = node.model_response
+                last_finish = response.finish_reason
+                calls = [p for p in response.parts if isinstance(p, ToolCallPart)]
+                audit.record(
+                    {
+                        "run_id": run_id,
+                        "event": "model_step",
+                        "step": step,
+                        "finish_reason": response.finish_reason,
+                        "tool_calls": [c.tool_name for c in calls],
+                    }
+                )
+                for c in calls:
+                    audit.record({"run_id": run_id, "event": "tool_call", "step": step, "tool": c.tool_name, "args": audit.short(c.args)})
+            elif Agent.is_model_request_node(node):
+                for part in node.request.parts:
+                    if isinstance(part, ToolReturnPart):
+                        audit.record(
+                            {"run_id": run_id, "event": "tool_result", "step": step, "tool": part.tool_name, "result": audit.short(part.content)}
+                        )
+                    elif isinstance(part, RetryPromptPart):
+                        audit.record(
+                            {
+                                "run_id": run_id,
+                                "event": "retry",
+                                "step": step,
+                                "tool": part.tool_name or "output_validator",
+                                "reason": audit.short(part.content, 200),
+                            }
+                        )
+        return run.result, last_finish
+
+
+def _audit_end(run_id: str, state: ShopState, started: float, stop_reason: str, detail: str, **extra) -> None:
+    audit.record(
+        {
+            "run_id": run_id,
+            "event": "run_end",
+            "stop_reason": stop_reason,
+            "detail": detail,
+            "seconds": round(time.perf_counter() - started, 2),
+            "tools_used": state.tools_used,
+            "price_corrections": state.price_corrections,
+            **extra,
+        }
     )
 
 

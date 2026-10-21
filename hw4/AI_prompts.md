@@ -234,3 +234,15 @@ Template for each problem (copy for each new problem):
 > 3. one of the usability features you added in problem 9... even check 2 or 3 to be sure
 >
 > make the html easy to grade - heading for each check, screenshot, and 1-2 sentences on what screenshot proves. put the screenshot image files in output/app_check_images/ and link them from app_check.html, with relative paths (for example app_check_images/inventory.png)
+
+## Problem 12 — Audit trail, safety, finish harness
+
+**Prompt (my own words):**
+
+> problem 12: audit trail, safety, finish harness
+>
+> keep an append-only output/audit_trail.json of agent-loop activity (time, tool name, short args/result, stop reason). do not wip eit between runs. also think of some safety rules to give the agent and put them in prompts/prompt.md
+>
+> finish output/hraness.md so it is clear how system works.
+>
+> model fields in models.py an why you chose them. tools and abilities. safety rules. specs (loop limits, result caps, models, how to run front + back)
